@@ -1,0 +1,77 @@
+<!-- Declare the document type as HTML5 standard -->
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <!-- Set character encoding to UTF-8 to prevent Vietnamese font corruption -->
+  <meta charset="UTF-8">
+  
+  <!-- Viewport settings: Ensures responsiveness on mobile, forces 1:1 scale, and disables user zooming -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  
+  <!-- The title displayed on the browser tab -->
+  <title>🚀 Trạm Điều Khiển Xe IoT Pro</title>
+  
+  <!-- Link the external CSS file to apply custom styling and layouts -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Main header section for the control dashboard -->
+  <h3>🛰️ Control Center </h3>
+  
+  <!-- Dashboard container holding the real-time sensor data boxes -->
+  <div class="dashboard">
+    <!-- Box for Temperature Sensor Data -->
+    <div class="box">
+      <div class="title">NHIỆT ĐỘ</div>
+      <!-- Placeholder for JavaScript to update the temperature value later -->
+      <span class="val t-color" id="t">28</span> <span style="color:#666; font-size:18px;">°C</span>
+    </div>
+    
+    <!-- Box for Obstacle Distance Sensor Data -->
+    <div class="box">
+      <div class="title">VẬT CẢN</div>
+      <!-- Placeholder for JavaScript to update the distance value later -->
+      <span class="val d-color" id="d">45</span> <span style="color:#666; font-size:18px;">cm</span>
+    </div>
+  </div>
+
+  <!-- System status bar: Dynamically changes color based on warning states -->
+  <div class="status-bar" id="sys-status">✅ HỆ THỐNG AN TOÀN</div>
+  
+  <!-- Autonomous Parking Feature Section -->
+  <div class="parking-box">
+    <!-- Triggers the sendCmd('P') function to activate autonomous parking routine on STM32 -->
+    <button class="park-btn" onclick="sendCmd('P')">🅿️ AUTO PARKING SYSTEM</button>
+  </div>
+  
+  <!-- Container for the Voice Recognition feature -->
+  <div class="voice-box">
+    <!-- Button triggers the startSpeechRecognition() function inside script.js -->
+    <button class="horn-btn voice-btn" onclick="startSpeechRecognition()">🎙️ NÓI LỆNH TIẾNG VIỆT</button>
+    <!-- Text container to show current status or recognized voice text -->
+    <div class="sub-info" id="voice-text">Bấm nút để nói: "Tiến lên", "Đỗ xe", "Dừng lại"...</div>
+  </div>
+
+  <!-- Directional D-Pad Layout (3x3 grid configuration) -->
+  <div class="joypad">
+    <!-- FORWARD BUTTON -->
+    <button class="btn" id="btn-F" onmousedown="sendCmd('F')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('F')" ontouchend="sendCmd('S')">▲</button>
+    
+    <!-- LEFT BUTTON -->
+    <button class="btn" id="btn-L" onmousedown="sendCmd('L')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('L')" ontouchend="sendCmd('S')">◄</button>
+    
+    <!-- EMERGENCY STOP BUTTON -->
+    <button class="btn" id="btn-S" onclick="sendCmd('S')">STOP</button>
+    
+    <!-- RIGHT BUTTON -->
+    <button class="btn" id="btn-R" onmousedown="sendCmd('R')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('R')" ontouchend="sendCmd('S')">►</button>
+    
+    <!-- BACKWARD BUTTON -->
+    <button class="btn" id="btn-B" onmousedown="sendCmd('B')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('B')" ontouchend="sendCmd('S')">▼</button>
+  </div>
+
+  <!-- Inject the external JavaScript logic file at the end -->
+  <script src="script.js"></script>
+</body>
+</html>

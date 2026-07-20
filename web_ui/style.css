@@ -1,0 +1,158 @@
+/* Universal selector applying rules to every HTML element on the page */
+* {
+  -webkit-touch-callout: none; /* Disables default callout popup on iOS */
+  -webkit-user-select: none;   /* Prevents users from highlighting text */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent; /* Removes flash effect when tapping buttons on mobile */
+  outline: none;
+  box-sizing: border-box;      /* Includes padding/borders within total size calculations */
+}
+
+/* Global styling for the main document window */
+body { 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+  background: radial-gradient(circle, #1a1a1a 0%, #0d0d0d 100%); /* Tech dashboard theme background */
+  color: #e0e0e0; 
+  text-align: center; 
+  margin: 0; 
+  padding: 15px; 
+  overflow: hidden;            /* Prevents page scrolling layout breaks */
+  touch-action: none;          /* Disables touch gestures like zooming on mobile */
+}
+
+/* Title text styling */
+h3 {
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin: 5px 0 15px 0;
+  background: linear-gradient(45deg, #00ffcc, #0077ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+/* Container for sensor data layout */
+.dashboard { 
+  display: flex; 
+  justify-content: space-between; 
+  margin-bottom: 15px; 
+}
+
+/* Individual sensor metric display boxes */
+.box { 
+  background: rgba(45, 45, 45, 0.6); 
+  backdrop-filter: blur(5px);  /* Frosted glass effect */
+  padding: 15px; 
+  border-radius: 16px; 
+  width: 48%; 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.title { font-size: 12px; color: #888; font-weight: 600; letter-spacing: 1px; margin-bottom: 8px; }
+.val { font-size: 32px; font-weight: 900; font-family: monospace; }
+.t-color { color: #ff5252; text-shadow: 0 0 10px rgba(255,82,82,0.3); }
+.d-color { color: #00e5ff; text-shadow: 0 0 10px rgba(0,229,255,0.3); }
+
+/* Full-width status notification bar */
+.status-bar { 
+  width: 100%; 
+  padding: 14px; 
+  border-radius: 12px; 
+  font-weight: 700; 
+  font-size: 15px; 
+  background-color: #1b5e20; 
+  color: #a7ffeb;              
+  border: 1px solid #00e676;   
+  box-shadow: 0 0 15px rgba(0,230,118,0.2); 
+  margin-bottom: 15px;
+}
+
+.parking-box { margin-bottom: 12px; }
+
+/* Autonomous parking activation button styling */
+.park-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #ff9100 0%, #ff6d00 100%); /* Amber alert tech gradient style */
+  border: none;
+  border-radius: 14px;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: 0 5px #b34a00, 0 5px 15px rgba(255,109,0,0.3); /* 3D effect shadow */
+  transition: all 0.1s ease;
+}
+
+/* Simulates physical click compression for the parking button */
+.park-btn:active {
+  box-shadow: 0 2px #b34a00;
+  transform: translateY(3px);
+}
+
+.voice-box { margin-bottom: 20px; }
+.sub-info { font-size: 13px; color: #aaa; font-weight: 600; margin-top: 8px; }
+
+/* Voice activator button layout */
+.horn-btn { 
+  width: 100%; 
+  background: linear-gradient(135deg, #00adff 0%, #0077ff 100%); 
+  border: none; 
+  border-radius: 14px; 
+  color: white; 
+  font-size: 15px; 
+  font-weight: 700; 
+  padding: 14px; 
+  cursor: pointer; 
+  box-shadow: 0 5px #0056b3, 0 5px 15px rgba(0,123,255,0.3); 
+}
+.horn-btn:active { 
+  box-shadow: 0 2px #0056b3;   
+  transform: translateY(3px);  
+}
+
+/* 3x3 CSS Grid container for directional control buttons layout */
+.joypad { 
+  display: grid; 
+  grid-template-columns: repeat(3, 85px); 
+  grid-template-rows: repeat(3, 85px);    
+  gap: 12px;                   
+  justify-content: center;     
+}
+
+/* Base style guidelines for directional movement buttons */
+.btn { 
+  background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); 
+  border: none; 
+  border-radius: 20px; 
+  color: white; 
+  font-size: 28px; 
+  font-weight: bold; 
+  cursor: pointer; 
+  box-shadow: 0 6px #1b5e20, 0 10px 20px rgba(0,0,0,0.4); 
+  transition: all 0.1s ease;   
+}
+.btn:active { 
+  box-shadow: 0 2px #1b5e20; 
+  transform: translateY(4px); 
+}
+
+/* Specific position definitions placing buttons onto the 3x3 D-Pad grid */
+#btn-F { grid-column: 2; grid-row: 1; } 
+#btn-L { grid-column: 1; grid-row: 2; } 
+#btn-R { grid-column: 3; grid-row: 2; } 
+#btn-B { grid-column: 2; grid-row: 3; } 
+
+/* Custom styling overriding the center STOP button properties */
+#btn-S { 
+  grid-column: 2;              
+  grid-row: 2;                 
+  background: linear-gradient(135deg, #c62828 0%, #ef5350 100%); 
+  box-shadow: 0 6px #5f0909, 0 10px 20px rgba(0,0,0,0.4); 
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+#btn-S:active { box-shadow: 0 2px #5f0909; transform: translateY(4px); }
