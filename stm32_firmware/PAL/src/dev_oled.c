@@ -10,7 +10,7 @@ static void Dev_OLED_Delay_ms(uint32_t ms) {
     for (volatile uint32_t i = 0; i < ms * 4000; i++) __NOP();
 }
 
-// --- BO FONT CHU ASCII CHUAN 8x8 (LUU TRONG FLASH) ---
+// --- BO FONT CHU ASCII CHUAN 8x8 ---
 static const uint8_t Font8x8[][8] = {
     {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // 32: Space
     {0x00,0x00,0x5F,0x00,0x00,0x00,0x00,0x00}, // 33: !
@@ -99,57 +99,64 @@ static void Dev_OLED_SendCmd(uint8_t cmd) {
 
 // --- CAC HAM DIEU KHIEN OLED CAP CAO ---
 void Dev_OLED_Init(void) {
+    Dev_OLED_Delay_ms(100);     // Chờ nguồn điện cấp cho OLED ổn định
+    
+    Dev_OLED_SendCmd(0xAE);     // Tắt màn hình
+    Dev_OLED_SendCmd(0x20);     // Cài đặt Chế độ địa chỉ bộ nhớ (Memory Addressing Mode)
+    Dev_OLED_SendCmd(0x00);     // 00b: Chế độ ngang (Horizontal Mode - Ghi hết 1 cột tự nhích tiếp)
+    Dev_OLED_SendCmd(0x8D);     // Cài đặt mạch nâng áp (Charge Pump)
+    Dev_OLED_SendCmd(0x14);     // Bật mạch nâng áp lên (Cung cấp điện áp 9V nội bộ cho OLED sáng)
+    Dev_OLED_SendCmd(0xAF);     // Bật màn hình lên
+    
     Dev_OLED_Delay_ms(100);
-    Dev_OLED_SendCmd(0xAE);
-    Dev_OLED_SendCmd(0x20);
-    Dev_OLED_SendCmd(0x00);
-    Dev_OLED_SendCmd(0x8D);
-    Dev_OLED_SendCmd(0x14);
-    Dev_OLED_SendCmd(0xAF);
-    Dev_OLED_Delay_ms(100);
+    Dev_OLED_Clear();           // Xóa sạch rác hiển thị khi mới cắm điện
 }
 
 void Dev_OLED_Clear(void) {
-    Dev_OLED_SendCmd(0xB0);
-    Dev_OLED_SendCmd(0x00);
-    Dev_OLED_SendCmd(0x10);
+    Dev_OLED_SendCmd(0xB0);     // Đưa con trỏ về Page 0
+    Dev_OLED_SendCmd(0x00);     // Cài cột thấp = 0
+    Dev_OLED_SendCmd(0x10);     // Cài cột cao = 0
+    
     I2C_Start();
     I2C_Write(OLED_ADDR);
     (void)I2C1->SR2;
-    I2C_Write(0x40);
+    I2C_Write(0x40);            // Control Byte = 0x40 (Báo OLED: Sau đây là DỮ LIỆU ĐIỂM ẢNH)
+    
     for (uint16_t i = 0; i < 1024; i++) {
-        I2C_Write(0x00);
+        I2C_Write(0x00);        // Bắn 1024 byte 0x00 (Tắt sạch toàn bộ bóng LED)
     }
     I2C_Stop();
 }
 
 void Dev_OLED_SetCursor(uint8_t page, uint8_t col) {
-    Dev_OLED_SendCmd(0xB0 + page);
-    Dev_OLED_SendCmd(col & 0x0F);
-    Dev_OLED_SendCmd(0x10 | ((col >> 4) & 0x0F));
+    Dev_OLED_SendCmd(0xB0 + page);                // Chọn Hàng (Page 0 đến 7)
+    Dev_OLED_SendCmd(col & 0x0F);                 // Tách lấy 4 bit thấp của vị trí Cột
+    Dev_OLED_SendCmd(0x10 | ((col >> 4) & 0x0F)); // Tách lấy 4 bit cao của vị trí Cột
 }
 
 void Dev_OLED_PutChar(char c) {
-    if (c < 32 || c > 90) c = 32;
-    uint8_t idx = c - 32;
+    if (c < 32 || c > 90) c = 32;   // Nếu truyền ký tự lạ không có trong bộ Font thì biến thành Space
+    uint8_t idx = c - 32;           // Chuyển mã ASCII thành chỉ số mảng (Space ASCII 32 -> Index 0)
+    
     I2C_Start();
     I2C_Write(OLED_ADDR);
     (void)I2C1->SR2;
-    I2C_Write(0x40);
+    I2C_Write(0x40);                // 0x40 = Báo OLED chuẩn bị nhận dữ liệu Pixel
+    
     for (uint8_t i = 0; i < 8; i++) {
-        I2C_Write(Font8x8[idx][i]);
+        I2C_Write(Font8x8[idx][i]); // Bắn 8 cột điểm ảnh của chữ ra màn hình
     }
     I2C_Stop();
 }
 
 void Dev_OLED_PrintString(uint8_t page, uint8_t col, const char* str) {
     Dev_OLED_SetCursor(page, col);
-    while(*str) {
+    while (*str) {
         if (*str >= 'a' && *str <= 'z') {
-            Dev_OLED_PutChar(*str - 32);
+            Dev_OLED_PutChar(*str - 32); // Tự đổi chữ thường ('a'-'z') thành chữ hoa ('A'-'Z')
         } else {
             Dev_OLED_PutChar(*str);
         }
-        str++;
+        str++;                           // Nhích con trỏ sang ký tự tiếp theo trong chuỗi
     }
 }
