@@ -1,80 +1,103 @@
 /**
- * Processes and forwards control packets to the execution log.
- * @param {string} cmd - The operational flag ('F', 'B', 'L', 'R', 'S', 'P')
+ * @file script.js
+ * @brief Điều khiển xe, nhận dữ liệu MQTT và quản lý luồng Camera FPV.
  */
-function sendCmd(cmd) {
-  // Logs the active telemetry packet command directly to the developer console
-  console.log("Command sent: " + cmd);
-  
-  // Triggers hardware haptic motors for a 35ms pulse (Android web only)
-  if (navigator.vibrate) navigator.vibrate(35); 
-}
 
-/**
- * Initializes the native browser Web Speech engine and handles Vietnamese vocal recognition parsing.
- */
-function startSpeechRecognition() {
-  // Cross-browser compatibility check
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  
-  if (!SpeechRecognition) {
-    alert("Speech recognition not supported. Please use Google Chrome.");
-    return;
-  }
+const BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
+const TOPIC_TELEMETRY = 'rover/telemetry';
+const TOPIC_CONTROL   = 'rover/control';
 
-  // Create an operational instance of the vocal engine
-  const recognition = new SpeechRecognition();
-  recognition.lang = "vi-VN";         
-  recognition.interimResults = false; 
+const client = mqtt.connect(BROKER_URL);
 
-  const voiceText = document.getElementById("voice-text");
-  voiceText.innerText = "🎙️ Listening...";
-  voiceText.style.color = "#00ffcc";  
+const tempValElem   = document.getElementById('temp-val');
+const distValElem   = document.getElementById('dist-val');
+const statusValElem = document.getElementById('status-val');
 
-  /**
-   * Success callback event executed when voice processing finishes.
-   */
-  recognition.onresult = function(event) {
-    // Extract raw text and map all characters to lowercase
-    const result = event.results[0][0].transcript.toLowerCase();
-    
-    // Display the interpreted voice output onto the dashboard interface
-    voiceText.innerText = 'You said: "' + result + '"';
-    voiceText.style.color = "#fff";   
-
-    // Core intent parsing logic: Checks for movement and parking keywords
-    if (result.includes("tiến") || result.includes("thẳng") || result.includes("chạy")) {
-      sendCmd("F"); 
-    } else if (result.includes("lùi") || result.includes("sau")) {
-      sendCmd("B"); 
-    } else if (result.includes("trái")) {
-      sendCmd("L"); 
-    } else if (result.includes("phải")) {
-      sendCmd("R"); 
-    } else if (result.includes("dừng") || result.includes("lại") || result.includes("stop")) {
-      sendCmd("S"); 
-    } else if (result.includes("đỗ") || result.includes("đỗ xe") || result.includes("parking")) {
-      sendCmd("P"); // Map to Auto Parking command flag
-    } else {
-      voiceText.innerText += " (Unknown command, try again)";
-      voiceText.style.color = "#ff5252"; 
+client.on('connect', () => {
+    console.log('✅ Kết nối thành công tới MQTT Cloud Broker.');
+    if (statusValElem) {
+        statusValElem.innerText = '✅ HỆ THỐNG AN TOÀN';
+        statusValElem.style.backgroundColor = '#1b5e20';
     }
-  };
+    client.subscribe(TOPIC_TELEMETRY);
+});
 
-  /**
-   * Error catch block executed if issues arise with permissions or microphone.
-   */
-  recognition.onerror = function(event) {
-    voiceText.innerText = "Error: " + event.error;
-    voiceText.style.color = "#ff5252"; 
-  };
+client.on('message', (topic, message) => {
+    if (topic === TOPIC_TELEMETRY) {
+        try {
+            const data = JSON.parse(message.toString());
+            if (tempValElem && data.temp !== undefined) tempValElem.innerText = data.temp;
+            if (distValElem && data.dist !== undefined) distValElem.innerText = data.dist;
 
-  // Energize microphone hardware and begin streaming audio data
-  recognition.start();
+            if (statusValElem) {
+                if (data.warn === 2) {
+                    statusValElem.innerText = '🔥 ALARM CHÁY 🔥';
+                    statusValElem.style.backgroundColor = '#b71c1c';
+                } else if (data.warn === 1) {
+                    statusValElem.innerText = '⚠️ CẢNH BÁO VẬT CẢN';
+                    statusValElem.style.backgroundColor = '#e65100';
+                } else {
+                    statusValElem.innerText = '✅ HỆ THỐNG AN TOÀN';
+                    statusValElem.style.backgroundColor = '#1b5e20';
+                }
+            }
+        } catch (e) {
+            console.error("Lỗi parse JSON:", e);
+        }
+    }
+});
+
+function sendCmd(cmd) {
+    if (navigator.vibrate) navigator.vibrate(35);
+    if (client && client.connected) {
+        client.publish(TOPIC_CONTROL, cmd);
+    }
 }
 
-/* Prevent native context dropdown menu triggers during prolonged mobile touch holds */
-document.addEventListener('contextmenu', event => event.preventDefault());
+function startSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Trình duyệt không hỗ trợ nhận diện giọng nói!");
+        return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "vi-VN";
+    
+    const voiceText = document.getElementById("voice-text");
+    if (voiceText) voiceText.innerText = "🎙️ Đang lắng nghe...";
 
-/* Intercept mobile browser vertical swipe gestures to lock desktop interface position alignment */
-document.addEventListener('touchmove', event => event.preventDefault(), {passive: false});
+    recognition.onresult = function(event) {
+        const result = event.results[0][0].transcript.toLowerCase();
+        if (voiceText) voiceText.innerText = 'Đã nói: "' + result + '"';
+
+        if (result.includes("tiến") || result.includes("chạy")) sendCmd("F");
+        else if (result.includes("lùi") || result.includes("sau")) sendCmd("B");
+        else if (result.includes("trái")) sendCmd("L");
+        else if (result.includes("phải")) sendCmd("R");
+        else if (result.includes("dừng") || result.includes("stop")) sendCmd("S");
+        else if (result.includes("đỗ")) sendCmd("P");
+    };
+    recognition.start();
+}
+
+function startStream() {
+    const ipInput = document.getElementById('cam-ip').value.trim();
+    const camFeed = document.getElementById('camera-feed');
+    const camStatus = document.getElementById('cam-status');
+
+    if (!ipInput) {
+        alert("Nhập IP ESP32-CAM!");
+        return;
+    }
+    camFeed.src = `http://${ipInput}:81/stream`;
+    camStatus.innerText = "ONLINE";
+    camStatus.className = "cam-online";
+}
+
+function onCamError() {
+    const camFeed = document.getElementById('camera-feed');
+    const camStatus = document.getElementById('cam-status');
+    camFeed.src = "";
+    camStatus.innerText = "OFFLINE";
+    camStatus.className = "cam-offline";
+}
