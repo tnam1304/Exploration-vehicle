@@ -16,6 +16,12 @@ extern uint16_t speed_fwd_right;
 extern uint16_t speed_bwd_left;
 extern uint16_t speed_bwd_right;
 
+typedef enum {
+    DIR_BACKWARD = -1,  // Hướng Lùi
+    DIR_STOP     =  0,  // Hướng Dừng / Phanh
+    DIR_FORWARD  =  1   // Hướng Tiến
+} Motor_Dir_t;
+
 /**
  * @brief Khởi tạo các chân GPIO và Timer PWM cho động cơ
  */
