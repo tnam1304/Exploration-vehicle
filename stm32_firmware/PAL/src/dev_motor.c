@@ -50,19 +50,19 @@ void Dev_Motor_Right_SetSpeed(int16_t speed) {
         MOTOR_R_IN1_PORT->BSRR = (1 << MOTOR_R_IN1_PIN);
         MOTOR_R_IN2_PORT->BSRR = (1 << (MOTOR_R_IN2_PIN + 16));
         TIM3->CCR1 = speed;
-        dir_right = 1; // Hướng Tiến
+        dir_right = DIR_FORWARD; // Hướng Tiến
     } else if (speed < 0) {
         // Quay lùi
         MOTOR_R_IN1_PORT->BSRR = (1 << (MOTOR_R_IN1_PIN + 16));
         MOTOR_R_IN2_PORT->BSRR = (1 << MOTOR_R_IN2_PIN);
         TIM3->CCR1 = -speed;
-        dir_right = -1; // Hướng Lùi
+        dir_right = DIR_BACKWARD; // Hướng Lùi
     } else {
         // Dừng
         MOTOR_R_IN1_PORT->BSRR = (1 << (MOTOR_R_IN1_PIN + 16));
         MOTOR_R_IN2_PORT->BSRR = (1 << (MOTOR_R_IN2_PIN + 16));
         TIM3->CCR1 = 0;
-        dir_right = 0; // Hướng Dừng
+        dir_right = DIR_STOP; // Hướng Dừng
     }
 
     // Cập nhật hướng cho Encoder bánh phải
@@ -80,19 +80,19 @@ void Dev_Motor_Left_SetSpeed(int16_t speed) {
         MOTOR_L_IN3_PORT->BSRR = (1 << MOTOR_L_IN3_PIN);
         MOTOR_L_IN4_PORT->BSRR = (1 << (MOTOR_L_IN4_PIN + 16));
         TIM3->CCR2 = speed;
-        dir_left = 1; // Hướng Tiến
+        dir_left = DIR_FORWARD; // Hướng Tiến
     } else if (speed < 0) {
         // Quay lùi
         MOTOR_L_IN3_PORT->BSRR = (1 << (MOTOR_L_IN3_PIN + 16));
         MOTOR_L_IN4_PORT->BSRR = (1 << MOTOR_L_IN4_PIN);
         TIM3->CCR2 = -speed;
-        dir_left = -1; // Hướng Lùi
+        dir_left = DIR_BACKWARD; // Hướng Lùi
     } else {
         // Dừng
         MOTOR_L_IN3_PORT->BSRR = (1 << (MOTOR_L_IN3_PIN + 16));
         MOTOR_L_IN4_PORT->BSRR = (1 << MOTOR_L_IN4_PIN + 16);
         TIM3->CCR2 = 0;
-        dir_left = 0; // Hướng Dừng
+        dir_left = DIR_STOP; // Hướng Dừng
     }
 
     // Cập nhật hướng cho Encoder bánh trái
