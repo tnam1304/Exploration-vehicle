@@ -1,39 +1,52 @@
-#ifndef PROTOCOL_PARSER_H
-#define PROTOCOL_PARSER_H
+#ifndef PARSER_H
+#define PARSER_H
 
-#include "stdint.h"
+#include <stdint.h>
+#include <stdbool.h>
 
+/**
+ * CẤU TRÚC FRAME TELEMETRY (STM32 -> ESP32-CAM -> WEB)
+ */
 #pragma pack(push, 1)
-
-// 1. Struct dữ liệu gửi từ STM32 -> ESP32-CAM -> Web
 typedef struct {
-    uint16_t header;        // Đồng bộ khung truyền
-    uint8_t  packet_id;     // Mã gói tin
-    int32_t  enc_left;      // Delta xung encoder bánh trái
-    int32_t  enc_right;     // Delta xung encoder bánh phải
-    int8_t   temperature;   // Nhiệt độ hệ thống / động cơ (°C)
-    uint8_t  battery_pct;   // Phần trăm pin (0 - 100)
-    uint8_t  car_state;     // Trạng thái xe (0: Đứng yên, 1: Chạy, 2: Tự lùi, 3: Lỗi)
-    uint8_t  sys_error;     // Mã lỗi (0: Bình thường, 1: Kẹt động cơ, 2: Quá nhiệt)
-    uint16_t crc16;         // Mã kiểm tra
-} OptimalTelemetryFrame_t;
-
-// 2. Struct lệnh điều khiển từ Web -> ESP32-CAM -> STM32
-typedef struct {
-    uint16_t header;
-    uint8_t  command_id;    // 0x01: Joystick, 0x02: Support-Parking, 0x03: Voice Command
-    uint8_t  voice_action;
-    int16_t  setpoint_left; // Vận tốc mong muốn bánh trái
-    int16_t  setpoint_right;// Vận tốc mong muốn bánh phải
-    uint16_t crc16;
-    uint16_t footer;
-} CommandFrame_t;
-
+    uint8_t  header1;
+    uint8_t  header2;
+    float    temp;
+    float    dist;
+    uint8_t  warn;
+    float    x;
+    float    y;
+    float    theta;
+    uint8_t  checksum;
+} TelemetryFrame_t;
 #pragma pack(pop)
 
 /**
- * @brief Hàm tính toán mã CRC16 kiểm tra lỗi khung truyền
+* 2. CẤU TRÚC FRAME COMMAND (WEB -> ESP32-CAM -> STM32)
+*/
+
+#pragma pack(push, 1)
+typedef struct {
+    uint8_t  header1;
+    uint8_t  header2;
+    uint8_t  cmd;       // Mã lệnh
+    uint8_t  checksum;
+} CommandFrame_t;
+#pragma pack(pop)
+
+/**
+ * CÁC HÀM API ĐÓNG GÓI / GIẢI MÃ
  */
-uint16_t calculateCRC16(const uint8_t *data, size_t length);
+
+/**
+ * @brief Đóng gói dữ liệu cảm biến và tọa độ vào Frame
+ */
+void Parser_CreateTelemetryFrame(TelemetryFrame_t *frame, float temp, float dist, uint8_t warn, float x, float y, float theta);
+
+/**
+ * @brief Đọc mảng byte nhận từ UART, kiểm tra Header, Checksum và lấy ra lệnh điều khiển
+ * @return true nếu Frame chuẩn, false nếu có lỗi nhiễu hoặc sai checksum
+ */
+bool Parser_ParseCommandFrame(uint8_t *buffer, uint16_t len, uint8_t *out_cmd);
 
 #endif

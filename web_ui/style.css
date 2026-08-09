@@ -9,188 +9,79 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: radial-gradient(circle, #1a1a1a 0%, #0d0d0d 100%);
+    background: radial-gradient(circle, #161a23 0%, #0a0d14 100%);
     color: #e0e0e0;
     margin: 0;
-    padding: 15px;
+    padding: 10px;
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-/* KHUNG CHÍNH CHIA ĐÔI MÀN HÌNH */
 .app-container {
     display: flex;
-    flex-direction: row;
-    gap: 20px;
-    width: 100%;
-    max-width: 1000px;
-    background: rgba(255, 255, 255, 0.02);
-    padding: 20px;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-}
-
-/* CỘT TRÁI (BẢNG ĐIỀU KHIỂN & CẢM BIẾN) */
-.panel-left {
-    flex: 1;
-    display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 1100px;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 18px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
 }
 
-h3 {
-    font-size: 18px;
+.app-header {
+    font-size: 15px;
     letter-spacing: 2px;
-    margin: 0 0 12px 0;
-    background: linear-gradient(45deg, #00ffcc, #0077ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-transform: uppercase;
     font-weight: 800;
+    color: #38bdf8;
+    text-align: center;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+    padding-bottom: 8px;
 }
 
-.dashboard {
+/* ================= HÀNG 1: CAMERA & MAP ================= */
+.top-view-row {
     display: flex;
-    justify-content: space-between;
-    width: 100%;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 15px;
+    height: 380px;
 }
 
-.box {
-    background: rgba(45, 45, 45, 0.6);
-    backdrop-filter: blur(5px);
-    padding: 10px;
-    border-radius: 12px;
+.display-card {
     flex: 1;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.title { font-size: 11px; color: #888; font-weight: 600; margin-bottom: 4px; }
-.val { font-size: 24px; font-weight: 900; font-family: monospace; }
-.t-color { color: #ff5252; }
-.d-color { color: #00e5ff; }
-
-.status-bar {
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
     padding: 10px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 13px;
-    background-color: #1b5e20;
-    color: #a7ffeb;
-    border: 1px solid #00e676;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-.action-box { width: 100%; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
-
-.park-btn, .voice-btn {
-    width: 100%;
-    border: none;
-    border-radius: 10px;
-    color: white;
-    font-size: 13px;
-    font-weight: 700;
-    padding: 10px;
-    cursor: pointer;
-    transition: all 0.1s ease;
-}
-
-.park-btn {
-    background: linear-gradient(135deg, #ff9100 0%, #ff6d00 100%);
-    box-shadow: 0 4px #b34a00;
-}
-
-.voice-btn {
-    background: linear-gradient(135deg, #00adff 0%, #0077ff 100%);
-    box-shadow: 0 4px #0056b3;
-}
-
-.park-btn:active, .voice-btn:active { transform: translateY(2px); box-shadow: none; }
-.sub-info { font-size: 11px; color: #aaa; text-align: center; margin-top: 2px; }
-
-/* JOYPAD BÀN PHÍM CỤM THU GỌN */
-.joypad {
-    display: grid;
-    grid-template-columns: repeat(3, 70px);
-    grid-template-rows: repeat(3, 60px);
     gap: 8px;
-    justify-content: center;
-    margin-top: 5px;
 }
 
-.btn {
-    background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
-    border: none;
-    border-radius: 14px;
-    color: white;
-    font-size: 22px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 4px #1b5e20;
-    transition: all 0.1s ease;
-}
-
-.btn:active { transform: translateY(3px); box-shadow: none; }
-
-#btn-F { grid-column: 2; grid-row: 1; }
-#btn-L { grid-column: 1; grid-row: 2; }
-#btn-R { grid-column: 3; grid-row: 2; }
-#btn-B { grid-column: 2; grid-row: 3; }
-
-#btn-S {
-    grid-column: 2; grid-row: 2;
-    background: linear-gradient(135deg, #c62828 0%, #ef5350 100%);
-    box-shadow: 0 4px #5f0909;
-    font-size: 13px;
-}
-
-/* CỘT PHẢI (CAMERA FPV TO TOÀN MAN HÌNH) */
-.panel-right {
-    flex: 1.2;
-    display: flex;
-    flex-direction: column;
-}
-
-.camera-box {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 12px;
-}
-
-.camera-header {
+.card-title {
     display: flex;
     justify-content: space-between;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: #38bdf8;
-    margin-bottom: 10px;
 }
 
 #cam-status.cam-offline { color: #ef4444; }
 #cam-status.cam-online { color: #22c55e; }
 
-.video-container {
+.video-container, .map-container-wrapper {
     flex: 1;
-    min-height: 280px;
-    background-color: #000;
-    border-radius: 12px;
+    background-color: #05070a;
+    border-radius: 8px;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #334155;
+    position: relative;
+    border: 1px solid #1e293b;
 }
 
 #camera-feed {
@@ -199,36 +90,180 @@ h3 {
     object-fit: cover;
 }
 
+#odom-map {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+}
+#odom-map:active { cursor: grabbing; }
+
 .cam-control {
     display: flex;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
 }
 
 .cam-control input {
     flex: 1;
     background: #0f172a;
     border: 1px solid #334155;
-    border-radius: 8px;
+    border-radius: 6px;
     color: #fff;
-    padding: 8px 10px;
-    font-size: 12px;
+    padding: 6px 8px;
+    font-size: 11px;
 }
 
 .cam-control button {
     background: #0284c7;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 12px;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
     font-weight: bold;
     cursor: pointer;
 }
 
-/* RESPONSIVE TRÊN MÀN HÌNH DI ĐỘNG NHỎ */
-@media (max-width: 768px) {
-    .app-container {
-        flex-direction: column-reverse; /* Xếp Cam lên trên, phím xuống dưới */
+
+/* ================= HÀNG 2: ĐIỀU KHIỂN & CẢM BIẾN ================= */
+.bottom-control-row {
+    display: flex;
+    gap: 15px;
+    background: rgba(30, 41, 59, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 10px;
+    align-items: center;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.telemetry-group {
+    flex: 1;
+    gap: 6px;
+}
+
+.dashboard {
+    display: flex;
+    gap: 8px;
+}
+
+.box {
+    background: rgba(15, 23, 42, 0.8);
+    padding: 6px;
+    border-radius: 8px;
+    flex: 1;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.title {
+    font-size: 9px;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.val {
+    font-size: 16px;
+    font-weight: 900;
+    font-family: monospace;
+}
+
+.t-color { color: #f43f5e; }
+.d-color { color: #06b6d4; }
+
+.status-bar {
+    width: 100%;
+    padding: 6px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 11px;
+    background-color: #166534;
+    color: #bbf7d0;
+    border: 1px solid #22c55e;
+    text-align: center;
+}
+
+/* Joypad giữa */
+.joypad-group {
+    align-items: center;
+    flex: 1;
+}
+
+.joypad {
+    display: grid;
+    grid-template-columns: repeat(3, 42px);
+    grid-template-rows: repeat(3, 34px);
+    gap: 3px;
+}
+
+.btn {
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px #14532d;
+    transition: all 0.05s ease;
+}
+.btn:active { transform: translateY(2px); box-shadow: none; }
+
+#btn-F { grid-column: 2; grid-row: 1; }
+#btn-L { grid-column: 1; grid-row: 2; }
+#btn-R { grid-column: 3; grid-row: 2; }
+#btn-B { grid-column: 2; grid-row: 3; }
+
+#btn-S {
+    grid-column: 2;
+    grid-row: 2;
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+    box-shadow: 0 2px #7f1d1d;
+    font-size: 8px;
+}
+
+/* Voice cụm phải */
+.voice-group {
+    flex: 1;
+    gap: 6px;
+}
+
+.voice-btn {
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 10px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    box-shadow: 0 2px #075985;
+}
+.voice-btn:active { transform: translateY(2px); box-shadow: none; }
+
+.sub-info {
+    font-size: 9px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+/* Responsive màn hình nhỏ */
+@media (max-width: 900px) {
+    .top-view-row {
+        flex-direction: column;
+        height: auto;
+    }
+    .video-container, .map-container-wrapper {
+        height: 240px;
+    }
+    .bottom-control-row {
+        flex-direction: column;
     }
 }

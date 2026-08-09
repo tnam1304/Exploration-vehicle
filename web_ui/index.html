@@ -4,71 +4,81 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>🚀 Trạm Điều Khiển Xe IoT Pro</title>
-  
   <link rel="stylesheet" href="style.css">
-  <!-- Thư viện MQTT over WebSocket -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
 
-  <!-- Khung bao toàn bộ ứng dụng (Layout 2 Cột) -->
   <div class="app-container">
-    
-    <!-- CỘT TRÁI: DỮ LIỆU CẢM BIẾN & NÚT BẤM ĐIỀU KHIỂN -->
-    <div class="panel-left">
-      <h3>🛰️ Control Center</h3>
+    <div class="app-header">🛰️ TRẠM ĐIỀU KHIỂN XE IoT PRO</div>
 
-      <!-- Bảng thông số cảm biến -->
-      <div class="dashboard">
-        <div class="box">
-          <div class="title">NHIỆT ĐỘ</div>
-          <span class="val t-color" id="temp-val">--</span> <span style="color:#666; font-size:14px;">°C</span>
-        </div>
-        <div class="box">
-          <div class="title">VẬT CẢN</div>
-          <span class="val d-color" id="dist-val">--</span> <span style="color:#666; font-size:14px;">cm</span>
-        </div>
-      </div>
-
-      <!-- Thanh trạng thái an toàn -->
-      <div class="status-bar" id="status-val">✅ HỆ THỐNG AN TOÀN</div>
-
-      <!-- Khối nút bấm chức năng -->
-      <div class="action-box">
-        <button class="park-btn" onclick="sendCmd('P')">🅿️ AUTO PARKING SYSTEM</button>
-        <button class="horn-btn voice-btn" onclick="startSpeechRecognition()">🎙️ NÓI LỆNH TIẾNG VIỆT</button>
-        <div class="sub-info" id="voice-text">Nói: "Tiến", "Lùi", "Trái", "Phải", "Đỗ xe", "Dừng"...</div>
-      </div>
-
-      <!-- Khung Joypad phím điều khiển (3x3 Grid) -->
-      <div class="joypad">
-        <button class="btn" id="btn-F" onmousedown="sendCmd('F')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('F')" ontouchend="sendCmd('S')">▲</button>
-        <button class="btn" id="btn-L" onmousedown="sendCmd('L')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('L')" ontouchend="sendCmd('S')">◄</button>
-        <button class="btn" id="btn-S" onclick="sendCmd('S')">STOP</button>
-        <button class="btn" id="btn-R" onmousedown="sendCmd('R')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('R')" ontouchend="sendCmd('S')">►</button>
-        <button class="btn" id="btn-B" onmousedown="sendCmd('B')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('B')" ontouchend="sendCmd('S')">▼</button>
-      </div>
-    </div>
-
-    <!-- CỘT PHẢI: PHÁT VIDEO LIVE CAMERA FPV -->
-    <div class="panel-right">
-      <div class="camera-box">
-        <div class="camera-header">
+    <!-- ================= HÀNG 1: CAMERA & MAP (HAI NGÔI SAO CHÍNH) ================= -->
+    <div class="top-view-row">
+      
+      <!-- 1. Khung Camera FPV -->
+      <div class="display-card">
+        <div class="card-title">
           <span>📹 LIVE CAMERA FPV</span>
-          <span id="cam-status" class="cam-offline">OFFLINE</span>
+          <span id="cam-status" class="cam-offline">● OFFLINE</span>
         </div>
-        
-        <!-- Khung hiển thị Video Stream -->
         <div class="video-container">
-          <img id="camera-feed" src="" alt="Chưa kết nối Camera FPV" onerror="onCamError()">
+          <img id="camera-feed" src="" alt="Chưa kết nối Camera FPV" onload="onCamLoad()" onerror="onCamError()">
         </div>
-
-        <!-- Thanh nhập IP ESP32-CAM -->
         <div class="cam-control">
           <input type="text" id="cam-ip" placeholder="Nhập IP ESP32 (VD: 192.168.1.15)">
-          <button onclick="startStream()">Kết Nối Cam</button>
+          <button onclick="startStream()">Kết Nối</button>
         </div>
       </div>
+
+      <!-- 2. Khung Bản đồ Odometry -->
+      <div class="display-card">
+        <div class="card-title">
+          <span>📍 ODOMETRY MAP</span>
+          <span style="cursor:pointer;" onclick="runTestMap()" title="Chạy Test Giả lập">🧪</span>
+        </div>
+        <div class="map-container-wrapper">
+          <canvas id="odom-map"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ================= HÀNG 2: CẢM BIẾN & ĐIỀU HƯỚNG (BẢNG ĐIỀU KHIỂN) ================= -->
+    <div class="bottom-control-row">
+
+      <!-- Trạng thái & Thông số cảm biến -->
+      <div class="control-group telemetry-group">
+        <div class="dashboard">
+          <div class="box">
+            <div class="title">NHIỆT ĐỘ</div>
+            <span class="val t-color" id="temp-val">--</span> <span style="color:#666; font-size:11px;">°C</span>
+          </div>
+          <div class="box">
+            <div class="title">VẬT CẢN</div>
+            <span class="val d-color" id="dist-val">--</span> <span style="color:#666; font-size:11px;">cm</span>
+          </div>
+        </div>
+        <div class="status-bar" id="status-val">✅ HỆ THỐNG AN TOÀN</div>
+      </div>
+
+      <!-- Cụm Joypad điều hướng -->
+      <div class="control-group joypad-group">
+        <div class="joypad">
+          <button class="btn" id="btn-F" onmousedown="sendCmd('F')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('F')" ontouchend="sendCmd('S')">▲</button>
+          <button class="btn" id="btn-L" onmousedown="sendCmd('L')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('L')" ontouchend="sendCmd('S')">◄</button>
+          <button class="btn" id="btn-S" onclick="sendCmd('S')">STOP</button>
+          <button class="btn" id="btn-R" onmousedown="sendCmd('R')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('R')" ontouchend="sendCmd('S')">►</button>
+          <button class="btn" id="btn-B" onmousedown="sendCmd('B')" onmouseup="sendCmd('S')" ontouchstart="sendCmd('B')" ontouchend="sendCmd('S')">▼</button>
+        </div>
+      </div>
+
+      <!-- Cụm điều khiển giọng nói -->
+      <div class="control-group voice-group">
+        <button class="voice-btn" onclick="startSpeechRecognition()">🎙️ NÓI LỆNH TIẾNG VIỆT</button>
+        <div class="sub-info" id="voice-text">Nói: "Tiến", "Lùi", "Trái", "Phải", "Dừng"...</div>
+      </div>
+
     </div>
 
   </div>

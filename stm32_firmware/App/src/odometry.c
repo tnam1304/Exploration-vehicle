@@ -1,66 +1,54 @@
-#include <math.h>
+#include "odometry.h"
+#include <stddef.h> // Hỗ trợ NULL
 
-// Định nghĩa cấu trúc lưu trạng thái vị trí Robot
-typedef struct {
-    float x;     // Tọa độ X (mét)
-    float y;     // Tọa độ Y (mét)
-    float theta; // Góc định hướng (Rad)
+void Odometry_Init(OdometryTracker *odom, float base, float circ, int32_t tpr) {
+    if (odom == NULL) return;
 
-    // Biến lưu số xung encoder kỳ trước để tính delta
-    int32_t last_enc_left;
-    int32_t last_enc_right;
-} Odometry_t;
+    odom->wheel_base = base;
+    odom->wheel_circumference = circ;
+    odom->ticks_per_rev = tpr;
 
-// Các thông số
-#define WHEEL_RADIUS       0.033f  // Bán kính bánh xe
-#define TRACK_WIDTH        0.18f   // Khoảng cách giữa 2 bánh
-#define COUNTS_PER_REVOLUTION 20.0f // Số xung encoder trong 1 vòng quay
-
-Odometry_t robot_odom = {0, 0, 0, 0, 0};
-
-/**
- * @brief Khởi tạo thông số ban đầu cho Odometry
- */
-
-void Odometry_Init(void) {
-    robot_odom.x = 0.0f;
-    robot_odom.y = 0.0f;
-    robot_odom.theta = 0.0f;
-    robot_odom.last_enc_left = 0;
-    robot_odom.last_enc_right = 0;
+    odom->current_pose.x = 0.0f;
+    odom->current_pose.y = 0.0f;
+    odom->current_pose.theta = 0.0f;
 }
 
-/**
- * @brief Hàm cập nhật Odometry
- * @param current_enc_left: Tổng số xung hiện tại của encoder bánh trái
- * @param current_enc_right: Tổng số xung hiện tại của encoder bánh phải
- */
-void Odometry_Update(int32_t current_enc_left, int32_t current_enc_right) {
-    // Tính số xung thay đổi (Delta pulses) từ kỳ trước đến nay
-    int32_t delta_enc_L = current_enc_left - robot_odom.last_enc_left;
-    int32_t delta_enc_R = current_enc_right - robot_odom.last_enc_right;
+void Odometry_Update(OdometryTracker *odom, int32_t delta_left, int32_t delta_right) {
+    if (odom == NULL) return;
 
-    // Cập nhật lại giá trị encoder cũ
-    robot_odom.last_enc_left = current_enc_left;
-    robot_odom.last_enc_right = current_enc_right;
+    // 1. Chuyển đổi từ số xung sang quãng đường tuyến tính của từng bánh (Mét)
+    float ds_l = (odom->wheel_circumference * (float)delta_left) / (float)odom->ticks_per_rev;
+    float ds_r = (odom->wheel_circumference * (float)delta_right) / (float)odom->ticks_per_rev;
 
-    // Chuyển đổi từ số xung sang quãng đường tuyến tính của từng bánh
-    float ds_l = (2.0f * M_PI * WHEEL_RADIUS * (float)delta_enc_L) / COUNTS_PER_REVOLUTION;
-    float ds_r = (2.0f * M_PI * WHEEL_RADIUS * (float)delta_enc_R) / COUNTS_PER_REVOLUTION;
-
-    // Tính quãng đường trung bình và góc xoay của robot
+    // 2. Tính quãng đường trung bình và góc dTheta
     float ds = (ds_r + ds_l) / 2.0f;
-    float dtheta = (ds_r - ds_l) / TRACK_WIDTH;
+    float dtheta = (ds_r - ds_l) / odom->wheel_base;
 
-    // Cập nhật tọa độ (x, y, theta) sử dụng phương pháp Runge-Kutta bậc 2 (Midpoint)
-    // Giúp giảm sai số tích lũy khi robot chuyển động cong
-    float phi_mid = robot_odom.theta + (dtheta / 2.0f);
+    // 3. Dùng góc trung bình (Midpoint) để nội suy quỹ đạo cong, giảm sai số tích lũy
+    float phi_mid = odom->current_pose.theta + (dtheta / 2.0f);
 
-    robot_odom.x += ds * cosf(phi_mid);
-    robot_odom.y += ds * sinf(phi_mid);
-    robot_odom.theta += dtheta;
+    odom->current_pose.x += ds * cosf(phi_mid);
+    odom->current_pose.y += ds * sinf(phi_mid);
+    odom->current_pose.theta += dtheta;
 
-    // Chuẩn hóa góc theta luôn nằm trong khoảng [-PI, PI]
-    if (robot_odom.theta > M_PI)  robot_odom.theta -= (2.0f * M_PI);
-    if (robot_odom.theta < -M_PI) robot_odom.theta += (2.0f * M_PI);
+    // 4. Ép góc Theta luôn luôn nằm trong khoảng giới hạn [-PI đến PI]
+    if (odom->current_pose.theta > M_PI)
+        odom->current_pose.theta -= (2.0f * M_PI);
+    if (odom->current_pose.theta < -M_PI)
+        odom->current_pose.theta += (2.0f * M_PI);
+}
+
+Pose2D_t Odometry_GetPose(OdometryTracker *odom) {
+    if (odom == NULL) {
+        Pose2D_t empty = {0, 0, 0};
+        return empty;
+    }
+    return odom->current_pose;
+}
+
+void Odometry_Reset(OdometryTracker *odom) {
+    if (odom == NULL) return;
+    odom->current_pose.x = 0.0f;
+    odom->current_pose.y = 0.0f;
+    odom->current_pose.theta = 0.0f;
 }
