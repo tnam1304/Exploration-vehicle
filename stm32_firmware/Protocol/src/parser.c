@@ -1,104 +1,150 @@
 /**
  * @file    parser.c
- * @brief   Triển khai bộ phân tích cú pháp lệnh điều khiển cho xe thám hiểm
+ * @brief   Parser UART có khung để lệnh điều khiển không bị lẫn vào nhau.
  */
 
 #include "parser.h"
 #include "app_control.h"
+#include "app_pid.h"
 #include "app_safety.h"
 #include "protocol_uart.h"
-#include <stdlib.h>
 
-/* Bộ đệm nội bộ chứa chuỗi lệnh nhận qua UART */
+/* Mỗi lệnh từ ESP32 là một dòng: C:<ký_tự> hoặc V:<20..100>. */
 static char rx_buf[PARSER_RX_BUF_SIZE];
 static uint8_t rx_idx = 0;
 
-void Parser_ProcessCmd(char rx_cmd) {
-    /* Cập nhật thời điểm nhận lệnh cuối cùng để kiểm tra an toàn (Timeout) */
+static void Parser_RefreshLink(void) {
     last_cmd_time = TIM2->CNT;
+    wifi_status_online = 1;
+}
 
-    /* 1. Nhận các lệnh di chuyển đơn lẻ (1 byte) */
-    if (rx_cmd == 'F' || rx_cmd == 'B' || rx_cmd == 'L' || rx_cmd == 'R' || rx_cmd == 'S') {
-        drive_cmd = rx_cmd;
-        if (rx_cmd == 'S') {
+static void Parser_ApplyDriveCommand(char command) {
+    char previous_command = drive_cmd;
+    drive_cmd = command;
+
+    if (command == 'S') {
+        horn_active = 0;
+        Update_Buzzer_State();
+    }
+
+    /* Không mang tích phân của hướng cũ sang hướng mới. */
+    if (command != previous_command) {
+        PID_Reset(&pid_left);
+        PID_Reset(&pid_right);
+    }
+
+    if (pid_enable == 0) {
+        Update_Motors_From_Cmd();
+    }
+}
+
+static void Parser_HandleControl(char command) {
+    switch (command) {
+        case 'F':
+        case 'B':
+        case 'L':
+        case 'R':
+        case 'S':
+            Parser_ApplyDriveCommand(command);
+            Parser_RefreshLink();
+            break;
+
+        case 'P':
+            pid_enable = 1;
+            PID_Reset(&pid_left);
+            PID_Reset(&pid_right);
+            Parser_RefreshLink();
+            break;
+
+        case 'p':
+            pid_enable = 0;
+            PID_Reset(&pid_left);
+            PID_Reset(&pid_right);
+            Update_Motors_From_Cmd();
+            Parser_RefreshLink();
+            break;
+
+        case 'H':
+            horn_active = 1;
+            Update_Buzzer_State();
+            Parser_RefreshLink();
+            break;
+
+        case 'h':
             horn_active = 0;
             Update_Buzzer_State();
-        }
+            Parser_RefreshLink();
+            break;
 
-        /* Nếu PID đang tắt (chạy dự phòng) -> Cập nhật trực tiếp ra PWM */
+        case 'O':
+            wifi_status_online = 1;
+            Parser_RefreshLink();
+            break;
+
+        case 'o':
+            wifi_status_online = 0;
+            last_cmd_time = TIM2->CNT;
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void Parser_HandleSpeed(void) {
+    uint16_t speed_percent = 0;
+
+    /* V: phải có tối thiểu một chữ số và không chấp nhận ký tự lạ. */
+    if (rx_idx < 3) {
+        return;
+    }
+
+    for (uint8_t i = 2; i < rx_idx; i++) {
+        if (rx_buf[i] < '0' || rx_buf[i] > '9') {
+            return;
+        }
+        speed_percent = (uint16_t)(speed_percent * 10U + (uint16_t)(rx_buf[i] - '0'));
+        if (speed_percent > CONTROL_SPEED_MAX_PERCENT) {
+            return;
+        }
+    }
+
+    if (speed_percent >= CONTROL_SPEED_MIN_PERCENT) {
+        Control_SetSpeedPercent((uint8_t)speed_percent);
         if (pid_enable == 0) {
             Update_Motors_From_Cmd();
         }
-        rx_idx = 0;
+        Parser_RefreshLink();
     }
-    /* Bật/Tắt chế độ điều khiển PID */
-    else if (rx_cmd == 'P') {
-        pid_enable = 1;
-        rx_idx = 0;
+}
+
+static void Parser_HandleFrame(void) {
+    rx_buf[rx_idx] = '\0';
+
+    if (rx_idx == 3 && rx_buf[0] == 'C' && rx_buf[1] == ':') {
+        Parser_HandleControl(rx_buf[2]);
+    } else if (rx_idx >= 3 && rx_buf[0] == 'V' && rx_buf[1] == ':') {
+        Parser_HandleSpeed();
     }
-    else if (rx_cmd == 'p') {
-        pid_enable = 0;
-        rx_idx = 0;
-    }
-    /* Bật/Tắt còi báo */
-    else if (rx_cmd == 'H') {
-        horn_active = 1;
-        Update_Buzzer_State();
-        rx_idx = 0;
-    }
-    else if (rx_cmd == 'h') {
-        horn_active = 0;
-        Update_Buzzer_State();
-        rx_idx = 0;
-    }
-    /* Cập nhật trạng thái kết nối WiFi */
-    else if (rx_cmd == 'O') {
-        wifi_status_online = 1;
-        rx_idx = 0;
-    }
-    else if (rx_cmd == 'o') {
-        wifi_status_online = 0;
-        rx_idx = 0;
+}
+
+void Parser_ProcessCmd(char rx_cmd) {
+    if (rx_cmd == '\r') {
+        return;
     }
 
-    /* 2. Nhận chuỗi cấu hình tốc độ động cơ */
-    else {
-        if (rx_cmd == '\n' || rx_cmd == '\r') {
-            rx_buf[rx_idx] = '\0';
-            if (rx_buf[0] == 'V') {
-                int speed_val = 0;
-                if (rx_buf[1] == ':') {
-                    speed_val = atoi(&rx_buf[2]);
-                } else {
-                    speed_val = atoi(&rx_buf[1]);
-                }
-
-                /* Quy đổi từ phần trăm (%) sang giá trị PWM */
-                if (speed_val >= SPEED_MIN_PERCENT && speed_val <= SPEED_MAX_PERCENT) {
-                    speed_val = speed_val * SPEED_PERCENT_SCALE;
-                }
-
-                /* Áp dụng tốc độ nếu nằm trong dải PWM hợp lệ */
-                if (speed_val >= SPEED_MIN_PWM && speed_val <= SPEED_MAX_PWM) {
-                    speed_fwd_left  = (uint16_t)speed_val;
-                    speed_fwd_right = (uint16_t)speed_val;
-                    speed_bwd_left  = (uint16_t)speed_val;
-                    speed_bwd_right = (uint16_t)speed_val;
-
-                    /* Nếu PID đang tắt thì cập nhật ngay lập tức xuống động cơ */
-                    if (pid_enable == 0) {
-                        Update_Motors_From_Cmd();
-                    }
-                }
-            }
-            rx_idx = 0;
-        } else {
-            /* Lưu ký tự vào bộ đệm nếu chưa vượt quá dung lượng */
-            if (rx_idx < (sizeof(rx_buf) - 1)) {
-                rx_buf[rx_idx++] = rx_cmd;
-            } else {
-                rx_idx = 0;
-            }
+    if (rx_cmd == '\n') {
+        if (rx_idx > 0) {
+            Parser_HandleFrame();
         }
+        rx_idx = 0;
+        return;
+    }
+
+    if (rx_idx < (sizeof(rx_buf) - 1U)) {
+        rx_buf[rx_idx++] = rx_cmd;
+    } else {
+        /* Bỏ trọn frame lỗi để byte rác không tạo lệnh ngẫu nhiên. */
+        rx_idx = 0;
     }
 }

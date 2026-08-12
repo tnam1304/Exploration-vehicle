@@ -110,7 +110,7 @@ void Peripherals_Init(void) {
     GPIOA->MODER  |= (2 << (USART2_TX_PIN * 2)) | (2 << (USART2_RX_PIN * 2)); /* Alternate Function mode */
     GPIOA->AFR[0] |= (7 << (USART2_TX_PIN * 4)) | (7 << (USART2_RX_PIN * 4)); /* AF7 cho USART2         */
 
-    USART2->BRR  = USART2_BRR_9600_16MHZ;
+    USART2->BRR  = USART2_BRR_115200_16MHZ;
     USART2->CR1 |= USART_CR1_TE | USART_CR1_RE | USART_CR1_RXNEIE | USART_CR1_UE;
 
     NVIC_SetPriority(USART2_IRQn, 0);

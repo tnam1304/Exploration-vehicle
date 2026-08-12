@@ -8,6 +8,7 @@
 
 #include "stm32f4xx.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 /* ========================================================================== */
 /* THÔNG SỐ CẤU HÌNH CẢM BIẾN SIÊU ÂM (SONAR HARDWARE CONFIGURATION)          */
@@ -16,7 +17,6 @@
 #define SONAR_ECHO_PIN              2           /* PB2  - Chân Echo nhận phản hồi */
 
 #define SONAR_TRIG_PULSE_US         10          /* Độ rộng xung Trigger (10us) */
-#define SONAR_TIMEOUT_COUNT         30000       /* Số vòng lặp chờ tín hiệu Echo trước khi timeout */
 #define SONAR_MAX_TIME_US           25000       /* Thời gian chờ Echo tối đa (us) ~ 430cm */
 #define SONAR_US_TO_CM_FACTOR       58          /* Hệ số quy đổi microsecond sang centimet (us / 58 = cm) */
 #define SONAR_ERROR_DIST            999         /* Giá trị trả về khi đo lỗi/timeout (cm) */
@@ -30,5 +30,14 @@
  * @retval Khoảng cách đo được tính bằng centimet (cm), hoặc 999 nếu timeout/lỗi
  */
 uint32_t Measure_Distance(void);
+
+/** Bắt đầu một lần đo; hàm chỉ chặn 10us để phát xung trigger. */
+void Sonar_StartMeasurement(void);
+
+/**
+ * @brief Thăm dò kết quả đo không chặn CPU.
+ * @return true khi một kết quả (kể cả timeout) đã sẵn sàng.
+ */
+bool Sonar_Poll(uint32_t *distance_cm);
 
 #endif /* DEV_SONAR_H */

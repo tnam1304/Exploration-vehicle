@@ -10,6 +10,19 @@
 volatile int8_t motor_left_dir = 0;
 volatile int8_t motor_right_dir = 0;
 
+static void Motor_Right_StopNow(void) {
+    GPIOA->BSRR = (1U << (MOTOR_AIN1_PIN + 16U)) | (1U << (MOTOR_AIN2_PIN + 16U));
+    TIM3->CCR1 = 0;
+    motor_right_dir = 0;
+}
+
+static void Motor_Left_StopNow(void) {
+    GPIOB->BSRR = (1U << (MOTOR_BIN2_PIN + 16U));
+    GPIOA->BSRR = (1U << (MOTOR_BIN1_PIN + 16U));
+    TIM3->CCR2 = 0;
+    motor_left_dir = 0;
+}
+
 void Motor_Right_SetSpeed(int16_t speed) {
     /* Giới hạn dải tốc độ [-1000, 1000] */
     if (speed > MOTOR_MAX_SPEED) {
@@ -17,6 +30,12 @@ void Motor_Right_SetSpeed(int16_t speed) {
     }
     if (speed < MOTOR_MIN_SPEED) {
         speed = MOTOR_MIN_SPEED;
+    }
+
+    /* Luôn có một lần PWM = 0 trước khi đảo cầu H để tránh giật cơ khí. */
+    if ((speed > 0 && motor_right_dir < 0) || (speed < 0 && motor_right_dir > 0)) {
+        Motor_Right_StopNow();
+        return;
     }
 
     if (speed > 0) {
@@ -31,9 +50,7 @@ void Motor_Right_SetSpeed(int16_t speed) {
         motor_right_dir = -1;
     } else {
         /* Dừng động cơ: PA8 Low, PA9 Low */
-        GPIOA->BSRR = (1 << (MOTOR_AIN1_PIN + 16)) | (1 << (MOTOR_AIN2_PIN + 16));
-        TIM3->CCR1 = 0;
-        motor_right_dir = 0;
+        Motor_Right_StopNow();
     }
 }
 
@@ -44,6 +61,12 @@ void Motor_Left_SetSpeed(int16_t speed) {
     }
     if (speed < MOTOR_MIN_SPEED) {
         speed = MOTOR_MIN_SPEED;
+    }
+
+    /* Luôn có một lần PWM = 0 trước khi đảo cầu H để tránh giật cơ khí. */
+    if ((speed > 0 && motor_left_dir < 0) || (speed < 0 && motor_left_dir > 0)) {
+        Motor_Left_StopNow();
+        return;
     }
 
     if (speed > 0) {
@@ -60,9 +83,6 @@ void Motor_Left_SetSpeed(int16_t speed) {
         motor_left_dir = -1;
     } else {
         /* Dừng động cơ: PB0 Low, PA10 Low */
-        GPIOB->BSRR = (1 << (MOTOR_BIN2_PIN + 16));
-        GPIOA->BSRR = (1 << (MOTOR_BIN1_PIN + 16));
-        TIM3->CCR2 = 0;
-        motor_left_dir = 0;
+        Motor_Left_StopNow();
     }
 }

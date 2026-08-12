@@ -9,9 +9,7 @@
 #include "stm32f4xx.h"
 #include <stdint.h>
 
-/* ========================================================================== */
 /* HẰNG SỐ CẤU HÌNH ĐIỀU KHIỂN (CONTROL CONFIGURATION CONSTANTS)               */
-/* ========================================================================== */
 #define DEFAULT_SPEED_PWM           400         /* Tốc độ PWM mặc định ban đầu */
 #define MIN_DECEL_PWM               200         /* Tốc độ PWM tối thiểu khi giảm tốc tránh vật cản */
 
@@ -19,20 +17,21 @@
 #define SAFETY_SLOW_DIST_CM         50          /* Khoảng cách bắt đầu giảm tốc (cm) */
 #define SAFETY_RANGE_DIST_CM        40.0f       /* Dải khoảng cách giảm tốc (50cm - 10cm) */
 
-/* ========================================================================== */
+#define CONTROL_SPEED_MIN_PERCENT     20
+#define CONTROL_SPEED_MAX_PERCENT     100
+#define CONTROL_SPEED_DEFAULT_PERCENT 50
+
 /* BIẾN TOÀN CỤC CHIA SẺ (SHARED GLOBAL VARIABLES)                           */
-/* ========================================================================== */
 extern uint16_t speed_fwd_left;
 extern uint16_t speed_fwd_right;
 extern uint16_t speed_bwd_left;
 extern uint16_t speed_bwd_right;
 
 extern volatile char drive_cmd;
-extern uint8_t pid_enable;
+extern volatile uint8_t pid_enable;
+extern volatile uint8_t control_speed_percent;
 
-/* ========================================================================== */
 /* NGUYÊN MẪU HÀM (FUNCTION PROTOTYPES)                                       */
-/* ========================================================================== */
 
 /**
  * @brief Cho xe tiến thẳng ở tốc độ cài đặt
@@ -63,5 +62,6 @@ void Car_Stop(void);
  * @brief Cập nhật trạng thái động cơ dựa trên lệnh điều khiển và khoảng cách an toàn
  */
 void Update_Motors_From_Cmd(void);
+void Control_SetSpeedPercent(uint8_t percent);
 
 #endif /* APP_CONTROL_H */

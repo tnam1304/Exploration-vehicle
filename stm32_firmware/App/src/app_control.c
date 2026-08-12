@@ -8,7 +8,8 @@
 #include "app_safety.h"
 
 /* Cờ cho phép sử dụng bộ điều khiển PID */
-uint8_t pid_enable = 1;
+volatile uint8_t pid_enable = 1;
+volatile uint8_t control_speed_percent = CONTROL_SPEED_DEFAULT_PERCENT;
 
 /* Biến lưu giá trị tốc độ PWM cho từng hướng di chuyển */
 uint16_t speed_fwd_left  = DEFAULT_SPEED_PWM;
@@ -19,9 +20,7 @@ uint16_t speed_bwd_right = DEFAULT_SPEED_PWM;
 /* Lệnh di chuyển hiện tại ('F', 'B', 'L', 'R', 'S') */
 volatile char drive_cmd = 'S';
 
-/* ========================================================================== */
 /* CÁC HÀM ĐIỀU HƯỚNG CƠ BẢN (BASIC MOVEMENT FUNCTIONS)                       */
-/* ========================================================================== */
 
 void Car_Forward_Normal(void) {
     Motor_Left_SetSpeed(speed_fwd_left);
@@ -48,9 +47,7 @@ void Car_Stop(void) {
     Motor_Right_SetSpeed(0);
 }
 
-/* ========================================================================== */
 /* HÀM CẬP NHẬT TRẠNG THÁI TỔNG HỢP (COMPOSITE UPDATE FUNCTION)               */
-/* ========================================================================== */
 
 void Update_Motors_From_Cmd(void) {
     if (drive_cmd == 'F') {
@@ -84,4 +81,17 @@ void Update_Motors_From_Cmd(void) {
     else if (drive_cmd == 'S') {
         Car_Stop();
     }
+}
+
+void Control_SetSpeedPercent(uint8_t percent) {
+    if (percent < CONTROL_SPEED_MIN_PERCENT || percent > CONTROL_SPEED_MAX_PERCENT) {
+        return;
+    }
+
+    control_speed_percent = percent;
+    uint16_t pwm = (uint16_t)percent * 10U;
+    speed_fwd_left  = pwm;
+    speed_fwd_right = pwm;
+    speed_bwd_left  = pwm;
+    speed_bwd_right = pwm;
 }

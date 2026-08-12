@@ -2,9 +2,8 @@
  * @file WebUI.h
  * @brief Mã nguồn giao diện điều khiển Web (Frontend)
  * 
- * Tích hợp HTML5, CSS3 và Vanilla Javascript. Sử dụng phương pháp
- * Sequential Fetch để chống nghẽn Socket TCP và tích hợp Web Speech API 
- * phục vụ điều khiển bằng giọng nói. Map hành trình sử dụng thuật toán Dead-reckoning.
+ * Tích hợp HTML5, CSS3 và Vanilla Javascript. Sử dụng AbortController 
+ * để chống nghẽn Socket TCP và ưu tiên lệnh dừng khẩn cấp.
  */
 
 #ifndef WEB_UI_H
@@ -204,42 +203,40 @@ const char MAIN_page[] PROGMEM = R"=====(
       fetch('/speed?val=' + val, { cache: "no-store" });
     }
 
-    // MODULE TRUYỀN NHẬN LỆNH (SMART QUEUE)
+    // ==========================================
+    // MODULE TRUYỀN NHẬN LỆNH (ABORT CONTROLLER)
+    // ==========================================
     let activeCmd = 'S';
-    let isSending = false;
-    let pendingCmd = null;
+    let fetchController = new AbortController(); // Quản lý vòng đời của luồng HTTP
 
     /**
-     * @brief Quản lý hàng đợi Request để chống tràn TCP Socket
-     * Bỏ qua các lệnh trùng lặp, lưu tạm lệnh mới nếu mạng đang bận.
+     * @brief Kỹ thuật hủy luồng (Abort) để ép ESP32 nhận lệnh tức thời
+     * Bất cứ khi nào có thao tác nhả tay, request cũ đang kẹt sẽ bị trình duyệt
+     * chủ động drop để mở đường cho request Stop.
      */
     function sendCmd(cmd) { 
+      // Bỏ qua lệnh trùng lặp để tiết kiệm băng thông, trừ lệnh Stop luôn được gửi
       if (cmd === activeCmd && cmd !== 'S') return; 
       activeCmd = cmd;
-      if (isSending) { pendingCmd = cmd; return; }
-      executeSend(cmd);
-    }
+      
+      // Kích hoạt tín hiệu hủy HTTP request cũ
+      fetchController.abort(); 
+      // Tạo controller mới cho request chuẩn bị gửi
+      fetchController = new AbortController();
 
-    function executeSend(cmd) {
-      isSending = true;
-      fetch('/cmd?val=' + cmd, { cache: "no-store" })
-        .then(() => {
-          isSending = false;
-          if (pendingCmd !== null) {
-            let nextCmd = pendingCmd;
-            pendingCmd = null;
-            executeSend(nextCmd);
-          }
-        })
-        .catch(e => { isSending = false; });
+      fetch('/cmd?val=' + cmd, { 
+        cache: "no-store", 
+        signal: fetchController.signal // Gắn signal để theo dõi vòng đời
+      }).catch(e => {
+        // Bỏ qua lỗi DOMException do ta chủ động abort
+      });
     }
 
     // ==========================================
-    // MODULE ĐO TỪ XA (TELEMETRY & SEQUENTIAL FETCH)
+    // MODULE ĐO TỪ XA (TELEMETRY)
     // ==========================================
     /**
-     * @brief Lấy dữ liệu cảm biến tuần tự (Hỏi - Đáp gối đầu)
-     * Ngăn chặn hiện tượng dồn ứ Request gây nghẽn băng thông Wi-Fi
+     * @brief Giãn chu kỳ Polling để tối ưu băng thông Wi-Fi
      */
     function fetchTelemetry() {
       fetch('/data', { cache: "no-store" })
@@ -261,7 +258,8 @@ const char MAIN_page[] PROGMEM = R"=====(
                 sBar.innerText = "✅ HỆ THỐNG AN TOÀN"; sBar.style.backgroundColor = "#1b5e20";
             }
           }
-          setTimeout(fetchTelemetry, 300); // Fetch chu kỳ 300ms
+          // Tăng chu kỳ lấy mẫu từ 300ms lên 500ms để giảm nghẽn mạng
+          setTimeout(fetchTelemetry, 500); 
         })
         .catch(e => {
           document.getElementById('sys-status').innerText = "❌ MẤT KẾT NỐI WIFI";

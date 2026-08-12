@@ -20,6 +20,7 @@ typedef struct {
     float kd;               /* Hệ số vi phân (Derivative) */
     float target;           /* Giá trị đặt mong muốn (SetPoint) */
     float integral;         /* Bội số tích phân tích lũy */
+    float integral_limit;   /* Giới hạn tích phân để chống wind-up */
     float prev_error;       /* Sai số của chu kỳ trước */
     float max_output;       /* Giá trị đầu ra tối đa (Bão hòa trên) */
     float min_output;       /* Giá trị đầu ra tối thiểu (Bão hòa dưới) */

@@ -24,10 +24,7 @@ void USART2_IRQHandler(void) {
     if (USART2->SR & USART_SR_RXNE) {
         char rx_cmd = (char)(USART2->DR & 0xFF);
 
-        last_cmd_time = TIM2->CNT;
-        wifi_status_online = 1;
-
-        /* Chuyển ký tự nhận được cho bộ phân tích lệnh Parser */
+        /* Parser chỉ làm mới watchdog sau khi nhận được một frame hợp lệ. */
         Parser_ProcessCmd(rx_cmd);
     }
 }

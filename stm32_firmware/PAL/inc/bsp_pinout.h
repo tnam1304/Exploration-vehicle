@@ -51,7 +51,7 @@
 #define TIM3_PWM_PERIOD_ARR     (1000 - 1)      /* Tần số PWM = 1kHz (0 đến 999) */
 
 /* USART2 - Cấu hình Tốc độ Baud */
-#define USART2_BRR_9600_16MHZ   0x0683          /* Tốc độ 9600 bps tại xung APB1 = 16MHz */
+#define USART2_BRR_115200_16MHZ 0x008B          /* Tốc độ 115200 bps tại xung APB1 = 16MHz */
 
 /* I2C1 - Cấu hình Tốc độ Standard Mode (100kHz) */
 #define I2C_CR2_16MHZ           16              /* Tần số xung đầu vào APB1 = 16MHz */

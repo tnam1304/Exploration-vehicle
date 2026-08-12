@@ -108,14 +108,12 @@ void OLED_PutChar(char c) {
     if (c < OLED_ASCII_OFFSET || c > OLED_ASCII_MAX) {
         c = OLED_ASCII_OFFSET;
     }
-    
-    uint8_t idx = c - OLED_ASCII_OFFSET;
-    
-    I2C_Start(); 
-    I2C_Write(OLED_I2C_ADDR); 
-    (void)I2C1->SR2; 
+
+    uint8_t idx = (uint8_t)(c - OLED_ASCII_OFFSET);
+    I2C_Start();
+    I2C_Write(OLED_I2C_ADDR);
+    (void)I2C1->SR2;
     I2C_Write(OLED_CTRL_DATA);
-    
     for (uint8_t i = 0; i < OLED_FONT_WIDTH; i++) {
         I2C_Write(Font8x8[idx][i]);
     }
@@ -124,12 +122,30 @@ void OLED_PutChar(char c) {
 
 void OLED_PrintString(uint8_t page, uint8_t col, const char* str) {
     OLED_SetCursor(page, col);
+
+    /* Gửi trọn một hàng trong một transaction I2C thay vì mở/đóng bus cho
+       từng ký tự. Điều này giảm đáng kể thời gian chặn CPU. */
+    I2C_Start();
+    I2C_Write(OLED_I2C_ADDR);
+    (void)I2C1->SR2;
+    I2C_Write(OLED_CTRL_DATA);
+
     while (*str) {
-        if (*str >= 'a' && *str <= 'z') {
-            OLED_PutChar(*str - 32);
-        } else {
-            OLED_PutChar(*str);
+        char c = *str;
+        if (c >= 'a' && c <= 'z') {
+            c -= 32;
         }
+        if (c < OLED_ASCII_OFFSET || c > OLED_ASCII_MAX) {
+            c = OLED_ASCII_OFFSET;
+        }
+
+        uint8_t idx = (uint8_t)(c - OLED_ASCII_OFFSET);
+        for (uint8_t i = 0; i < OLED_FONT_WIDTH; i++) {
+            I2C_Write(Font8x8[idx][i]);
+        }
+
         str++;
     }
+
+    I2C_Stop();
 }

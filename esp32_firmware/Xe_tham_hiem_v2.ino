@@ -5,8 +5,11 @@
  * @details 
  * Cung cấp giải pháp truyền tải Video (MJPEG Stream) thời gian thực, 
  * Server điều khiển HTTP API và giao tiếp đồng bộ UART với vi điều khiển STM32.
- * Tích hợp cơ chế bảo vệ Failsafe và cấp phát tĩnh (Static Memory Allocation) 
- * để tối ưu hóa bộ nhớ cho vi điều khiển ESP32.
+ * Tích hợp cơ chế bảo vệ Failsafe, chống ngập lụt TCP (LRU Purge)
+ * và cấp phát tĩnh (Static Memory Allocation) để tối ưu hóa bộ nhớ cho ESP32.
+ * 
+ * @author Trần Văn Phường (UET - VNU)
+ * @date 2026
  */
 
 #include <WiFi.h>
@@ -14,27 +17,29 @@
 #include "soc/soc.h"           // Thư viện can thiệp Brownout
 #include "soc/rtc_cntl_reg.h"  // Thư viện disable Brownout detector
 
+/* =========================================================================
  * IMPORT MODULES LIÊN KẾT
+ * ========================================================================= */
 #include "WebUI.h"
 #include "CameraConfig.h"
 
-/* 
+/* =========================================================================
  * CẤU HÌNH THÔNG TẤN MẠNG (ACCESS POINT MODE)
- */
+ * ========================================================================= */
 const char* ssid     = "Xe_Tham_Hiem";
 const char* password = "88888888";
 
-/*
+/* =========================================================================
  * GIAO THỨC TRUYỀN PHÁT VIDEO (MJPEG STREAMING PROTOCOL)
- */
+ * ========================================================================= */
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* _STREAM_BOUNDARY     = "\r\n--" PART_BOUNDARY "\r\n";
 static const char* _STREAM_PART         = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
-/*
+/* =========================================================================
  * BIẾN TOÀN CỤC (GLOBAL TELEMETRY DATA)
-*/
+ * ========================================================================= */
 volatile int   temp_val    = 0;
 volatile int   dist_val    = 0;
 volatile int   warn_val    = 0; 
@@ -51,9 +56,9 @@ volatile unsigned long last_heartbeat_time = 0;
 httpd_handle_t camera_httpd = NULL;
 httpd_handle_t stream_httpd = NULL;
 
-/* 
+/* =========================================================================
  * API HANDLERS (ĐIỀU HƯỚNG HTTP REQUEST)
- */
+ * ========================================================================= */
 
 /**
  * @brief Tải giao diện WebUI (Frontend)
@@ -77,7 +82,7 @@ static esp_err_t data_handler(httpd_req_t *req) {
 }
 
 /**
- * @brief Xử lý lệnh điều hướng. Chuyển tiếp ngay lập tức qua UART (Độ trễ <1ms)
+ * @brief Xử lý lệnh điều hướng. Chuyển tiếp theo đúng định dạng Frame qua UART
  */
 static esp_err_t cmd_handler(httpd_req_t *req) {
   last_heartbeat_time = millis();
@@ -88,10 +93,11 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
     if (httpd_query_key_value(buf, "val", val, sizeof(val)) == ESP_OK) {
       char new_cmd = val[0];
       
-      // Gửi UART trực tiếp khi có sự thay đổi trạng thái hoặc phanh khẩn cấp
+      // Gửi UART trực tiếp khi có sự thay đổi trạng thái hoặc lệnh phanh
       if (current_cmd != new_cmd || new_cmd == 'S') {
         current_cmd = new_cmd;
-        Serial.print(current_cmd); 
+        /* Chèn thêm Frame Header "C:" và ngắt dòng "\n" cho Parser STM32 */
+        Serial.printf("C:%c\n", current_cmd); 
       }
     }
   }
@@ -109,6 +115,7 @@ static esp_err_t speed_handler(httpd_req_t *req) {
     char val[8];
     if (httpd_query_key_value(buf, "val", val, sizeof(val)) == ESP_OK) {
       current_speed = atoi(val);
+      /* Định dạng V:xx\n chuẩn xác với STM32 Parser */
       Serial.printf("V:%d\n", current_speed); 
     }
   }
@@ -163,13 +170,18 @@ static esp_err_t stream_handler(httpd_req_t *req) {
 }
 
 /**
- * @brief Đăng ký các Route API và khởi chạy Web Server
+ * @brief Đăng ký các Route API và khởi chạy Web Server (Có LRU Purge chống kẹt lệnh)
  */
 void startCameraServer() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   
-  // Server cấu hình dữ liệu (Port 80)
+  /* CÁC THÔNG SỐ TỐI ƯU HÓA CHỐNG NGHẼN TCP SOCKET */
   config.server_port = 80;
+  config.max_open_sockets = 10;       // Tăng số lượng kết nối tối đa
+  config.lru_purge_enable = true;     // Tự động "giết" các kết nối rác/bị treo để nhường chỗ cho lệnh mới
+  config.recv_wait_timeout = 3;       // Giảm thời gian chờ chết (deadlock timeout)
+  config.send_wait_timeout = 3;
+
   httpd_uri_t index_uri = { .uri = "/",      .method = HTTP_GET, .handler = index_handler, .user_ctx = NULL };
   httpd_uri_t data_uri  = { .uri = "/data",  .method = HTTP_GET, .handler = data_handler,  .user_ctx = NULL };
   httpd_uri_t cmd_uri   = { .uri = "/cmd",   .method = HTTP_GET, .handler = cmd_handler,   .user_ctx = NULL };
@@ -187,21 +199,23 @@ void startCameraServer() {
   // Server chuyên dụng cho Video Streaming (Port 81)
   config.server_port = 81;
   config.ctrl_port = 81;
-  httpd_uri_t stream_uri = { .uri = "/stream", .method = HTTP_GET, .handler = stream_handler, .user_ctx = NULL };
   
+  // Vẫn áp dụng thanh trừng LRU cho luồng video để chống giật lag khung hình
+  config.lru_purge_enable = true; 
+  
+  httpd_uri_t stream_uri = { .uri = "/stream", .method = HTTP_GET, .handler = stream_handler, .user_ctx = NULL };
   if (httpd_start(&stream_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(stream_httpd, &stream_uri);
   }
 }
 
-/*
+/* =========================================================================
  * MODULE GIAO TIẾP NGOẠI VI (UART COMMUNICATION)
- */
+ * ========================================================================= */
 
 /**
  * @brief Quét chuỗi Telemetry từ STM32 gửi lên
- * Sử dụng kỹ thuật Static Memory Allocation (C-string) để tránh 
- * hiện tượng phân mảnh Heap (Heap Fragmentation) khi hoạt động liên tục.
+ * Sử dụng kỹ thuật Static Memory Allocation (C-string) để tránh phân mảnh Heap
  */
 void processSerialUART() {
   static char rx_buf[64];
@@ -234,7 +248,6 @@ void processSerialUART() {
       rx_idx = 0; // Đặt lại con trỏ cho chu kỳ tiếp theo
     } 
     else if (c != '\r') {
-      // Giới hạn kích thước mảng để phòng ngừa lỗi tràn bộ nhớ (Buffer Overflow)
       if (rx_idx < sizeof(rx_buf) - 1) {
         rx_buf[rx_idx++] = c;
       }
@@ -242,9 +255,9 @@ void processSerialUART() {
   }
 }
 
-/*
+/* =========================================================================
  * KHỞI TẠO VÀ VÒNG LẶP CHÍNH (SETUP & LOOP)
- */
+ * ========================================================================= */
 
 void setup() {
   // Tắt kiểm tra sụt áp phần cứng để tránh reset ngẫu nhiên do Motor
@@ -253,7 +266,8 @@ void setup() {
   pinMode(FLASH_GPIO_NUM, OUTPUT);
   digitalWrite(FLASH_GPIO_NUM, LOW);
 
-  Serial.begin(9600);
+  /* Đồng bộ hoá tốc độ baudrate 115200 với STM32 */
+  Serial.begin(115200);
   Serial.setTimeout(10);
 
   // Khởi tạo và báo lỗi nếu Camera gặp sự cố
@@ -276,16 +290,18 @@ void loop() {
    */
   if (current_cmd != 'S' && (millis() - last_heartbeat_time > 1200)) {
     current_cmd = 'S'; 
-    Serial.print('S'); 
+    /* Định dạng lại lệnh gửi phanh khẩn cấp cho STM32 */
+    Serial.printf("C:%c\n", current_cmd); 
   }
 
   /**
    * DUY TRÌ KẾT NỐI (UART HEARTBEAT)
-   * Đẩy dữ liệu chu kỳ 50ms xuống STM32 để bù trừ rớt tín hiệu (EMI Interference)
+   * Đẩy dữ liệu chu kỳ 50ms xuống STM32 để bù trừ rớt tín hiệu
    */
   static unsigned long last_cmd_time = 0;
   if (millis() - last_cmd_time > 50) {
-    Serial.print(current_cmd); 
+    /* Định dạng lại lệnh gửi theo nhịp Heartbeat cho STM32 */
+    Serial.printf("C:%c\n", current_cmd); 
     last_cmd_time = millis();
   }
   
