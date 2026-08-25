@@ -235,6 +235,62 @@ const char MAIN_page[] PROGMEM = R"=====(
     // ==========================================
     // MODULE ĐO TỪ XA (TELEMETRY)
     // ==========================================
+    function safetySideText(side) {
+      if (side === 1) return " BÊN TRÁI";
+      if (side === 2) return " BÊN PHẢI";
+      if (side === 3) return " HAI BÊN";
+      return "";
+    }
+
+    function updateSafetyStatus(data) {
+      let sBar = document.getElementById('sys-status');
+      let side = safetySideText(data.side);
+      if (data.warn === 2) {
+        sBar.innerText = "🚨 BÁO ĐỘNG QUÁ NHIỆT";
+        sBar.style.backgroundColor = "#b71c1c";
+      } else if (data.safety === 12) {
+        sBar.innerText = "❌ LỖI PHẢN HỒI ENCODER";
+        sBar.style.backgroundColor = "#b71c1c";
+      } else if (data.safety === 11) {
+        sBar.innerText = "❌ LỖI/TIMEOUT CẢM BIẾN SONAR";
+        sBar.style.backgroundColor = "#b71c1c";
+      } else if (data.safety === 4) {
+        sBar.innerText = "🛑 AEB HOLD - CHỜ KHOẢNG CÁCH AN TOÀN";
+        sBar.style.backgroundColor = "#b71c1c";
+      } else if (data.safety === 3) {
+        sBar.innerText = "🛑 AEB - PHANH KHẨN CẤP PHÍA TRƯỚC";
+        sBar.style.backgroundColor = "#b71c1c";
+      } else if (data.safety === 2) {
+        sBar.innerText = "⚠️ PRE-BRAKE - ĐANG GIẢM TỐC";
+        sBar.style.backgroundColor = "#e65100";
+      } else if (data.safety === 1) {
+        sBar.innerText = "⚠️ FCW - VẬT CẢN PHÍA TRƯỚC";
+        sBar.style.backgroundColor = "#ef6c00";
+      } else if (data.safety === 6) {
+        sBar.innerText = "🚨 LÙI NGUY HIỂM" + side + " (" +
+                         Math.min(data.rearLeft, data.rearRight) + " CM)";
+        sBar.style.backgroundColor = "#b71c1c";
+      } else if (data.safety === 5) {
+        sBar.innerText = "⚠️ CẢNH BÁO LÙI" + side;
+        sBar.style.backgroundColor = "#e65100";
+      } else if (data.safety === 10) {
+        sBar.innerText = "⚡ NGUY HIỂM PHÍA SAU" + side + " - ĐANG BOOST";
+        sBar.style.backgroundColor = "#6a1b9a";
+      } else if (data.safety === 9) {
+        sBar.innerText = "🚨 VA CHẠM SAU NGUY HIỂM" + side;
+        sBar.style.backgroundColor = "#b71c1c";
+      } else if (data.safety === 8) {
+        sBar.innerText = "⚠️ CẢNH BÁO VA CHẠM SAU" + side;
+        sBar.style.backgroundColor = "#e65100";
+      } else if (data.safety === 7) {
+        sBar.innerText = "⚠️ VẬT THỂ PHÍA SAU ĐANG ÁP SÁT" + side;
+        sBar.style.backgroundColor = "#ef6c00";
+      } else {
+        sBar.innerText = "✅ HỆ THỐNG AN TOÀN";
+        sBar.style.backgroundColor = "#1b5e20";
+      }
+    }
+
     /**
      * @brief Giãn chu kỳ Polling để tối ưu băng thông Wi-Fi
      */
@@ -247,16 +303,14 @@ const char MAIN_page[] PROGMEM = R"=====(
           document.getElementById('s').innerText = data.spd.toFixed(1);
           document.getElementById('m').innerText = data.trav.toFixed(1);
           currentSpd = data.spd; 
+
+          pidOn = data.pid !== 0;
+          let pidBtn = document.getElementById("btn-pid");
+          pidBtn.className = pidOn ? "toggle-btn on" : "toggle-btn off";
+          pidBtn.innerHTML = pidOn ? "⚙️ PID: BẬT" : "⚙️ PID: TẮT";
           
-          if(!voiceTimerActive) {
-            let sBar = document.getElementById('sys-status');
-            if (data.warn == 2) {
-                sBar.innerText = "🚨 BÁO ĐỘNG QUÁ NHIỆT"; sBar.style.backgroundColor = "#b71c1c";
-            } else if (data.warn == 1 || (data.dist > 0 && data.dist <= 10)) {
-                sBar.innerText = "⚠️ CẢNH BÁO VẬT CẢN"; sBar.style.backgroundColor = "#e65100";
-            } else {
-                sBar.innerText = "✅ HỆ THỐNG AN TOÀN"; sBar.style.backgroundColor = "#1b5e20";
-            }
+          if(!voiceTimerActive || data.warn === 2 || data.safety !== 0) {
+            updateSafetyStatus(data);
           }
           // Tăng chu kỳ lấy mẫu từ 300ms lên 500ms để giảm nghẽn mạng
           setTimeout(fetchTelemetry, 500); 

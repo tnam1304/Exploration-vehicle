@@ -34,9 +34,13 @@
 /* Còi báo Buzzer */
 #define BUZZER_PIN              1       /* PB1 */
 
-/* Cảm biến siêu âm HC-SR04 */
-#define HC_SR04_ECHO_PIN        2       /* PB2 */
-#define HC_SR04_TRIG_PIN        10      /* PB10 */
+/* Ba cảm biến siêu âm HC-SR04 */
+#define HC_SR04_ECHO_PIN        2       /* Front Echo: PB2 */
+#define HC_SR04_TRIG_PIN        10      /* Front Trig: PB10 */
+#define SONAR_REAR_LEFT_TRIG_PIN 5      /* Rear Left Trig: PA5 */
+#define SONAR_REAR_LEFT_ECHO_PIN 3      /* Rear Left Echo: PB3 */
+#define SONAR_REAR_RIGHT_TRIG_PIN 7     /* Rear Right Trig: PB7 */
+#define SONAR_REAR_RIGHT_ECHO_PIN 4     /* Rear Right Echo: PB4 */
 
 /* Màn hình OLED I2C1 */
 #define OLED_SCL_PIN            8       /* PB8 */

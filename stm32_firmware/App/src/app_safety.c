@@ -50,3 +50,36 @@ void Update_Buzzer_State(void) {
         GPIOB->BSRR = (1 << (BUZZER_PIN + 16));        /* Tắt Buzzer (PB1) */
     }
 }
+
+void Safety_Buzzer_Process(uint32_t now_us, Safety_State_t state) {
+    uint32_t period_us = 0U;
+    uint32_t on_time_us = 0U;
+    uint8_t buzzer_on = 0U;
+
+    if (warn_code == SAFETY_WARN_FIRE || horn_active != 0U ||
+        state == SAFETY_STATE_AEB || state == SAFETY_STATE_AEB_HOLD) {
+        buzzer_on = 1U;
+    } else if (state == SAFETY_STATE_PRE_BRAKE ||
+               state == SAFETY_STATE_REVERSE_DANGER ||
+               state == SAFETY_STATE_REAR_DANGER ||
+               state == SAFETY_STATE_REAR_BOOST) {
+        period_us = 300000U;
+        on_time_us = 150000U;
+    } else if (state == SAFETY_STATE_FCW ||
+               state == SAFETY_STATE_REVERSE_WARNING ||
+               state == SAFETY_STATE_REAR_APPROACHING ||
+               state == SAFETY_STATE_REAR_WARNING) {
+        period_us = 800000U;
+        on_time_us = 150000U;
+    }
+
+    if (period_us != 0U) {
+        buzzer_on = ((now_us % period_us) < on_time_us) ? 1U : 0U;
+    }
+
+    if (buzzer_on != 0U) {
+        GPIOB->BSRR = (1U << BUZZER_PIN);
+    } else {
+        GPIOB->BSRR = (1U << (BUZZER_PIN + 16U));
+    }
+}

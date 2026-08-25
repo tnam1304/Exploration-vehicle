@@ -7,6 +7,7 @@
 #define APP_DISPLAY_H
 
 #include "stm32f4xx.h"
+#include "app_safety.h"
 #include <stdint.h>
 
 /* ========================================================================== */
@@ -46,7 +47,9 @@
  * @param speed Tốc độ hiện tại của xe (cm/s)
  * @param travel Quãng đường đã di chuyển tích lũy (cm)
  */
-void App_Display_Render(uint8_t wifi_online, uint32_t dist, int16_t temp, 
-                       int warn, int32_t enc, float speed, float travel);
+void App_Display_Render(uint8_t wifi_online, uint32_t dist, int16_t temp,
+                       int warn, int32_t enc, float speed, float travel,
+                       Safety_State_t safety_state,
+                       Safety_Side_t safety_side);
 
 #endif /* APP_DISPLAY_H */

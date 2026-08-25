@@ -20,6 +20,30 @@
 #define SAFETY_WARN_OBSTACLE        1           /* Cảnh báo vật cản nguy hiểm */
 #define SAFETY_WARN_FIRE            2           /* Cảnh báo sự cố hỏa hoạn */
 
+/* Mã trạng thái dùng chung cho điều khiển, OLED và telemetry Web. */
+typedef enum {
+    SAFETY_STATE_SAFE = 0,
+    SAFETY_STATE_FCW,
+    SAFETY_STATE_PRE_BRAKE,
+    SAFETY_STATE_AEB,
+    SAFETY_STATE_AEB_HOLD,
+    SAFETY_STATE_REVERSE_WARNING,
+    SAFETY_STATE_REVERSE_DANGER,
+    SAFETY_STATE_REAR_APPROACHING,
+    SAFETY_STATE_REAR_WARNING,
+    SAFETY_STATE_REAR_DANGER,
+    SAFETY_STATE_REAR_BOOST,
+    SAFETY_STATE_SONAR_ERROR,
+    SAFETY_STATE_ENCODER_ERROR
+} Safety_State_t;
+
+typedef enum {
+    SAFETY_SIDE_NONE = 0,
+    SAFETY_SIDE_LEFT,
+    SAFETY_SIDE_RIGHT,
+    SAFETY_SIDE_BOTH
+} Safety_Side_t;
+
 /* ========================================================================== */
 /* CẤU TRÚC DỮ LIỆU BỘ LỌC KALMAN 1D (KALMAN FILTER STRUCT)                   */
 /* ========================================================================== */
@@ -68,5 +92,8 @@ float Kalman1D_Update(Kalman1D_t *kf, float measurement);
  * @brief Cập nhật trạng thái bật/tắt còi báo (Buzzer) dựa trên mã cảnh báo và lệnh còi
  */
 void Update_Buzzer_State(void);
+
+/** Cập nhật nhịp còi không blocking theo trạng thái an toàn chung. */
+void Safety_Buzzer_Process(uint32_t now_us, Safety_State_t state);
 
 #endif /* APP_SAFETY_H */

@@ -12,7 +12,7 @@
 /* ========================================================================== */
 /* HẰNG SỐ CẤU HÌNH TRUYỀN THÔNG (UART CONFIGURATION CONSTANTS)               */
 /* ========================================================================== */
-#define UART_TX_BUF_SIZE            80          /* Kích thước bộ đệm chuỗi dữ liệu gửi đi */
+#define UART_TX_BUF_SIZE            160         /* Kích thước bộ đệm telemetry mở rộng */
 
 #define TEMP_SENSOR_ERROR_RAW      -9999        /* Mã lỗi nhiệt độ thô */
 #define TEMP_SENSOR_ERROR_DISP     -99          /* Hiển thị lỗi nhiệt độ (°C) */
@@ -42,6 +42,10 @@ extern volatile uint32_t last_cmd_time;
  * @param spd Tốc độ hiện tại của xe
  * @param trav Quãng đường di chuyển tổng cộng
  */
-void UART_Send_Telemetry(int16_t raw_t, uint32_t dist_cm, int warn, int32_t enc, float spd, float trav);
+void UART_Send_Telemetry(int16_t raw_t, uint32_t dist_cm, int warn,
+                         int32_t enc, float spd, float trav,
+                         int safety_state, int rear_state, int safety_side,
+                         int boost_active, int pid_active, int encoder_ok,
+                         uint32_t rear_left_cm, uint32_t rear_right_cm);
 
 #endif /* PROTOCOL_UART_H */

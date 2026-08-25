@@ -39,7 +39,8 @@ void Encoder_Init(void) {
     TIM5->CR1 = 0;
     TIM5->PSC = 0;                                 /* Không chia tần, đếm mọi xung */
     TIM5->ARR = ENCODER_TIM5_ARR_32BIT;            /* TIM5 là Timer 32-bit */
-    TIM5->CCMR1 = (1U << 0);                       /* CC1S = 01: Ánh xạ Input Capture 1 vào TI1 */
+    /* CC1S = 01, IC1F = 1111: lọc xung nhiễu ngắn trước khi đếm. */
+    TIM5->CCMR1 = TIM_CCMR1_CC1S_0 | TIM_CCMR1_IC1F;
     /* TS = 101 (TI1FP1 làm trigger), SMS = 111 (External Clock Mode 1) */
     TIM5->SMCR = ENCODER_TIM_SMCR_EXT_CLK_MODE1;
     TIM5->CR1 |= TIM_CR1_CEN;                      /* Bật Timer 5 */
@@ -48,7 +49,8 @@ void Encoder_Init(void) {
     TIM4->CR1 = 0;
     TIM4->PSC = 0;
     TIM4->ARR = ENCODER_TIM4_ARR_16BIT;            /* TIM4 là Timer 16-bit */
-    TIM4->CCMR1 = (1U << 0);                       /* CC1S = 01: Ánh xạ Input Capture 1 vào TI1 */
+    /* Dùng cùng mức lọc cho encoder phải để hai bánh có đặc tính giống nhau. */
+    TIM4->CCMR1 = TIM_CCMR1_CC1S_0 | TIM_CCMR1_IC1F;
     TIM4->SMCR = ENCODER_TIM_SMCR_EXT_CLK_MODE1;
     TIM4->CR1 |= TIM_CR1_CEN;                      /* Bật Timer 4 */
 

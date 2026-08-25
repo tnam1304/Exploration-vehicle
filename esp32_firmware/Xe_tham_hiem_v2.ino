@@ -46,6 +46,14 @@ volatile int   warn_val    = 0;
 volatile long  enc_val     = 0;
 volatile float speed_val   = 0.0;
 volatile float travel_dist = 0.0;
+volatile int   safety_val  = 0;
+volatile int   rear_val    = 0;
+volatile int   side_val    = 0;
+volatile int   boost_val   = 0;
+volatile int   pid_val     = 1;
+volatile int   encoder_ok_val = 1;
+volatile int   rear_left_val  = 0;
+volatile int   rear_right_val = 0;
 
 volatile char current_cmd   = 'S';
 volatile int  current_speed = 80;
@@ -73,9 +81,15 @@ static esp_err_t index_handler(httpd_req_t *req) {
  */
 static esp_err_t data_handler(httpd_req_t *req) {
   last_heartbeat_time = millis(); // Refresh Heartbeat
-  char json[200];
-  snprintf(json, sizeof(json), "{\"temp\":%d, \"dist\":%d, \"warn\":%d, \"enc\":%ld, \"spd\":%.1f, \"trav\":%.1f}", 
-           temp_val, dist_val, warn_val, enc_val, speed_val, travel_dist);
+  char json[360];
+  snprintf(json, sizeof(json),
+           "{\"temp\":%d,\"dist\":%d,\"warn\":%d,\"enc\":%ld,"
+           "\"spd\":%.1f,\"trav\":%.1f,\"safety\":%d,\"rear\":%d,"
+           "\"side\":%d,\"boost\":%d,\"pid\":%d,\"encOk\":%d,"
+           "\"rearLeft\":%d,\"rearRight\":%d}",
+           temp_val, dist_val, warn_val, enc_val, speed_val, travel_dist,
+           safety_val, rear_val, side_val, boost_val, pid_val,
+           encoder_ok_val, rear_left_val, rear_right_val);
            
   httpd_resp_set_type(req, "application/json");
   return httpd_resp_send(req, json, strlen(json));
@@ -218,7 +232,7 @@ void startCameraServer() {
  * Sử dụng kỹ thuật Static Memory Allocation (C-string) để tránh phân mảnh Heap
  */
 void processSerialUART() {
-  static char rx_buf[64];
+  static char rx_buf[160];
   static int rx_idx = 0;
 
   while (Serial.available() > 0) {
@@ -229,10 +243,15 @@ void processSerialUART() {
       
       if (rx_idx > 0) {
         int p_t = 0, p_d = 0, p_w = 0, p_s = 0, p_tr = 0;
+        int p_a = 0, p_r = 0, p_x = 0, p_b = 0, p_p = 1, p_i = 1;
+        int p_dl = 0, p_dr = 0;
         long p_e = 0;
         
-        int parsed = sscanf(rx_buf, "T%d;D%d;W%d;E%ld;S%d;M%d", 
-                            &p_t, &p_d, &p_w, &p_e, &p_s, &p_tr);
+        int parsed = sscanf(rx_buf,
+                            "T%d;D%d;W%d;E%ld;S%d;M%d;A%d;R%d;X%d;B%d;P%d;I%d;DL%d;DR%d",
+                            &p_t, &p_d, &p_w, &p_e, &p_s, &p_tr,
+                            &p_a, &p_r, &p_x, &p_b, &p_p, &p_i,
+                            &p_dl, &p_dr);
                             
         if (parsed >= 3) {
           temp_val = p_t;
@@ -242,6 +261,16 @@ void processSerialUART() {
             enc_val     = p_e;
             speed_val   = p_s / 10.0;
             travel_dist = p_tr / 10.0;
+          }
+          if (parsed >= 14) {
+            safety_val    = p_a;
+            rear_val      = p_r;
+            side_val      = p_x;
+            boost_val     = p_b;
+            pid_val       = p_p;
+            encoder_ok_val = p_i;
+            rear_left_val  = p_dl;
+            rear_right_val = p_dr;
           }
         }
       }

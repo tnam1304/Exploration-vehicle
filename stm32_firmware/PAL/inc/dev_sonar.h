@@ -1,43 +1,71 @@
-/**
- * @file    dev_sonar.h
- * @brief   Driver đo khoảng cách cảm biến siêu âm HC-SR04 cho STM32F401RCT6
- */
-
 #ifndef DEV_SONAR_H
 #define DEV_SONAR_H
 
-#include "stm32f4xx.h"
-#include <stdint.h>
+
 #include <stdbool.h>
+#include <stdint.h>
 
-/* ========================================================================== */
-/* THÔNG SỐ CẤU HÌNH CẢM BIẾN SIÊU ÂM (SONAR HARDWARE CONFIGURATION)          */
-/* ========================================================================== */
-#define SONAR_TRIG_PIN              10          /* PB10 - Chân Trigger phát xung */
-#define SONAR_ECHO_PIN              2           /* PB2  - Chân Echo nhận phản hồi */
+#include "stm32f4xx.h"
 
-#define SONAR_TRIG_PULSE_US         10          /* Độ rộng xung Trigger (10us) */
-#define SONAR_MAX_TIME_US           25000       /* Thời gian chờ Echo tối đa (us) ~ 430cm */
-#define SONAR_US_TO_CM_FACTOR       58          /* Hệ số quy đổi microsecond sang centimet (us / 58 = cm) */
-#define SONAR_ERROR_DIST            999         /* Giá trị trả về khi đo lỗi/timeout (cm) */
+typedef uint8_t Dev_SonarId_t;
 
-/* ========================================================================== */
-/* NGUYÊN MẪU HÀM (FUNCTION PROTOTYPES)                                       */
-/* ========================================================================== */
+#define DEV_SONAR_ID_INVALID \
+    ((Dev_SonarId_t)0xFFU)
 
-/**
- * @brief Thực hiện đo khoảng cách bằng cảm biến siêu âm HC-SR04
- * @retval Khoảng cách đo được tính bằng centimet (cm), hoặc 999 nếu timeout/lỗi
- */
-uint32_t Measure_Distance(void);
+typedef struct
+{
+    uint16_t distance_mm;     /* Khoang cach theo mm. */
+    uint32_t pulse_width_us;  /* Do rong xung Echo. */
+    bool valid;               /* Ket qua Echo hop le. */
+} Dev_SonarMeasurement_t;
 
-/** Bắt đầu một lần đo; hàm chỉ chặn 10us để phát xung trigger. */
-void Sonar_StartMeasurement(void);
+/* MẶT NẠ CHỌN CẢM BIẾN CẦN QUÉT                                             */
 
-/**
- * @brief Thăm dò kết quả đo không chặn CPU.
- * @return true khi một kết quả (kể cả timeout) đã sẵn sàng.
- */
-bool Sonar_Poll(uint32_t *distance_cm);
+#define DEV_SONAR_MASK(sensor_id) \
+    ((uint8_t)(1UL << (uint32_t)(sensor_id)))
+
+
+/* API KHỞI TẠO, ĐĂNG KÝ VÀ XỬ LÝ                                            */
+
+
+/* Khoi tao timer va xoa bang dang ky. */
+void Dev_Sonar_Init(void);
+
+/* Dang ky mot cap Trigger/Echo va tra ve ID. */
+Dev_SonarId_t Dev_Sonar_Add(
+    GPIO_TypeDef *trigger_port,
+    uint8_t trigger_pin,
+    GPIO_TypeDef *echo_port,
+    uint8_t echo_pin);
+
+/* Chay scheduler va xu ly timeout khong blocking. */
+void Dev_Sonar_Process(void);
+
+/* Chon cac ID duoc phep quet. */
+void Dev_Sonar_SetScanMask(uint8_t scan_mask);
+
+/* Doc scan mask hien tai. */
+uint8_t Dev_Sonar_GetScanMask(void);
+
+/* Lay mask cua tat ca cam bien da dang ky. */
+uint8_t Dev_Sonar_GetRegisteredMask(void);
+
+/* Lay so cam bien da dang ky. */
+uint8_t Dev_Sonar_GetSensorCount(void);
+
+
+/* API ĐỌC KẾT QUẢ */
+
+
+/* Doc ket qua gan nhat, khong xoa co new_data. */
+bool Dev_Sonar_GetLatest(
+    Dev_SonarId_t sensor_id,
+    Dev_SonarMeasurement_t *measurement);
+
+/* Doc ket qua moi va xoa co new_data. */
+bool Dev_Sonar_GetNewData(
+    Dev_SonarId_t sensor_id,
+    Dev_SonarMeasurement_t *measurement);
 
 #endif /* DEV_SONAR_H */
+

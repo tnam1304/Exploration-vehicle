@@ -63,5 +63,7 @@ void Car_Stop(void);
  */
 void Update_Motors_From_Cmd(void);
 void Control_SetSpeedPercent(uint8_t percent);
+void Control_SetForwardSafetyOverride(uint8_t stop_requested,
+                                      uint8_t speed_percent);
 
 #endif /* APP_CONTROL_H */

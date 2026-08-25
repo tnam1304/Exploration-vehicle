@@ -11,6 +11,10 @@
 volatile uint8_t pid_enable = 1;
 volatile uint8_t control_speed_percent = CONTROL_SPEED_DEFAULT_PERCENT;
 
+/* Giới hạn do Forward Safety/Rear Boost áp lên lệnh tiến ở chế độ PWM. */
+static volatile uint8_t safety_stop_requested = 0U;
+static volatile uint8_t safety_speed_percent = 100U;
+
 /* Biến lưu giá trị tốc độ PWM cho từng hướng di chuyển */
 uint16_t speed_fwd_left  = DEFAULT_SPEED_PWM;
 uint16_t speed_fwd_right = DEFAULT_SPEED_PWM;
@@ -51,22 +55,17 @@ void Car_Stop(void) {
 
 void Update_Motors_From_Cmd(void) {
     if (drive_cmd == 'F') {
-        /* Tự động dừng khẩn cấp nếu vật cản quá gần (<= 10cm) */
-        if (distance_cm > 0 && distance_cm <= SAFETY_STOP_DIST_CM) {
+        if (safety_stop_requested != 0U) {
             Car_Stop();
-        } 
-        /* Tự động giảm tốc tuyến tính khi tiệm cận vật cản (10cm < distance <= 50cm) */
-        else if (distance_cm > SAFETY_STOP_DIST_CM && distance_cm <= SAFETY_SLOW_DIST_CM) {
-            float ti_le = (float)(distance_cm - SAFETY_STOP_DIST_CM) / SAFETY_RANGE_DIST_CM;
-            int left_pwm  = MIN_DECEL_PWM + (int)(ti_le * (speed_fwd_left - MIN_DECEL_PWM));
-            int right_pwm = MIN_DECEL_PWM + (int)(ti_le * (speed_fwd_right - MIN_DECEL_PWM));
-            
-            Motor_Left_SetSpeed(left_pwm);
-            Motor_Right_SetSpeed(right_pwm);
-        } 
-        /* Đủ khoảng cách an toàn -> Tiến bình thường */
-        else {
-            Car_Forward_Normal();
+        } else {
+            uint32_t left_pwm =
+                ((uint32_t)speed_fwd_left * safety_speed_percent) / 100U;
+            uint32_t right_pwm =
+                ((uint32_t)speed_fwd_right * safety_speed_percent) / 100U;
+            if (left_pwm > 1000U) left_pwm = 1000U;
+            if (right_pwm > 1000U) right_pwm = 1000U;
+            Motor_Left_SetSpeed((int16_t)left_pwm);
+            Motor_Right_SetSpeed((int16_t)right_pwm);
         }
     }
     else if (drive_cmd == 'B') {
@@ -94,4 +93,13 @@ void Control_SetSpeedPercent(uint8_t percent) {
     speed_fwd_right = pwm;
     speed_bwd_left  = pwm;
     speed_bwd_right = pwm;
+}
+
+void Control_SetForwardSafetyOverride(uint8_t stop_requested,
+                                      uint8_t speed_percent) {
+    safety_stop_requested = (stop_requested != 0U) ? 1U : 0U;
+    safety_speed_percent = speed_percent;
+    if (safety_speed_percent > 115U) {
+        safety_speed_percent = 115U;
+    }
 }

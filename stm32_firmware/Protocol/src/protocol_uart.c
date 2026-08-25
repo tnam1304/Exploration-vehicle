@@ -29,7 +29,11 @@ void USART2_IRQHandler(void) {
     }
 }
 
-void UART_Send_Telemetry(int16_t raw_t, uint32_t dist_cm, int warn, int32_t enc, float spd, float trav) {
+void UART_Send_Telemetry(int16_t raw_t, uint32_t dist_cm, int warn,
+                         int32_t enc, float spd, float trav,
+                         int safety_state, int rear_state, int safety_side,
+                         int boost_active, int pid_active, int encoder_ok,
+                         uint32_t rear_left_cm, uint32_t rear_right_cm) {
     char tx_buffer[UART_TX_BUF_SIZE];
     
     /* Quy đổi nhiệt độ thô ra độ C */
@@ -42,9 +46,15 @@ void UART_Send_Telemetry(int16_t raw_t, uint32_t dist_cm, int warn, int32_t enc,
     int spd_int = (int)(spd * TELEMETRY_FLOAT_SCALE);
     int trav_int = (int)(trav * TELEMETRY_FLOAT_SCALE);
 
-    /* Đóng gói chuỗi Telemetry chuẩn: T<nhiệt>;D<khoảng_cách>;W<cảnh_báo>;E<xung>;S<tốc_độ>;M<quãng_đường> */
-    int len = sprintf(tx_buffer, "T%d;D%lu;W%d;E%ld;S%d;M%d\n", 
-                      temp_c, d_send, warn, (long)enc, spd_int, trav_int);
+    /* Sáu trường đầu giữ nguyên; các trường sau đồng bộ safety với ESP32. */
+    int len = sprintf(tx_buffer,
+                      "T%d;D%lu;W%d;E%ld;S%d;M%d;A%d;R%d;X%d;B%d;P%d;I%d;DL%lu;DR%lu\n",
+                      temp_c, (unsigned long)d_send, warn, (long)enc,
+                      spd_int, trav_int,
+                      safety_state, rear_state, safety_side, boost_active,
+                      pid_active, encoder_ok,
+                      (unsigned long)rear_left_cm,
+                      (unsigned long)rear_right_cm);
 
     /* Truyền chuỗi ký tự qua UART2 */
     for (int i = 0; i < len; i++) {
