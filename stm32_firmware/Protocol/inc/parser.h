@@ -12,7 +12,13 @@
 /* ========================================================================== */
 /* HẰNG SỐ CẤU HÌNH PARSER (PARSER CONFIGURATION CONSTANTS)                    */
 /* ========================================================================== */
-#define PARSER_RX_BUF_SIZE          16          /* Kích thước bộ đệm nhận chuỗi lệnh */
+#define PARSER_RX_BUF_SIZE          24          /* Đủ chứa frame PID G:Kp,Ki,Kd */
+
+/* Giới hạn hệ số PID nhận từ Web, biểu diễn theo hệ số nhân 100 */
+#define PID_GAIN_SCALE              100.0f
+#define PID_KP_MAX_SCALED           2000U       /* Kp tối đa 20.00 */
+#define PID_KI_MAX_SCALED           1000U       /* Ki tối đa 10.00 */
+#define PID_KD_MAX_SCALED           500U        /* Kd tối đa 5.00 */
 
 /* Giới hạn cài đặt tốc độ động cơ */
 #define SPEED_MIN_PERCENT           20          /* Tốc độ tối thiểu tính theo % */

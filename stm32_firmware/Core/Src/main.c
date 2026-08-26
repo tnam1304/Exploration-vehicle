@@ -38,8 +38,8 @@
 #define PID_KP_DEFAULT              8.0f
 #define PID_KI_DEFAULT              2.0f
 #define PID_KD_DEFAULT              0.0f
-#define PID_CORRECTION_MIN_PWM     -300.0f
-#define PID_CORRECTION_MAX_PWM      300.0f
+#define PID_CORRECTION_MIN_PWM     -545.0f
+#define PID_CORRECTION_MAX_PWM      545.0f
 #define PID_FEEDFORWARD_PWM_PER_CMS 13.0f
 #define PID_PWM_SLEW_PER_SEC        500.0f
 #define PWM_MIN                     0.0f
@@ -188,23 +188,46 @@ static void Main_UpdateSonarSchedule(
 
 static uint8_t Main_UpdateEncoderFeedback(uint32_t now_us,
                                           uint8_t movement_requested,
-                                          float applied_power_pwm) {
-    static uint32_t stalled_since_us = 0U;
-    static uint8_t encoder_ok = 1U;
-    const float speed = MaximumFloat(AbsoluteFloat(g_odometry.speed_left_cms),
-                                     AbsoluteFloat(g_odometry.speed_right_cms));
-    if (speed > ENCODER_STALL_MAX_SPEED_CMS) {
-        encoder_ok = 1U;
-        stalled_since_us = 0U;
-    } else if (movement_requested != 0U &&
-               applied_power_pwm >= ENCODER_STALL_MIN_PWM) {
-        if (stalled_since_us == 0U) stalled_since_us = now_us;
-        else if ((uint32_t)(now_us - stalled_since_us) >=
-                 ENCODER_STALL_TIMEOUT_US) encoder_ok = 0U;
-    } else {
-        stalled_since_us = 0U;
+                                          float applied_power_left_pwm,
+                                          float applied_power_right_pwm) {
+    static uint32_t left_stalled_since_us = 0U;
+    static uint32_t right_stalled_since_us = 0U;
+    static uint8_t left_ok = 1U;
+    static uint8_t right_ok = 1U;
+    const float left_speed = AbsoluteFloat(g_odometry.speed_left_cms);
+    const float right_speed = AbsoluteFloat(g_odometry.speed_right_cms);
+
+    if (movement_requested == 0U) {
+        left_stalled_since_us = 0U;
+        right_stalled_since_us = 0U;
+        left_ok = 1U;
+        right_ok = 1U;
+        return 1U;
     }
-    return encoder_ok;
+
+    if (left_speed > ENCODER_STALL_MAX_SPEED_CMS) {
+        left_ok = 1U;
+        left_stalled_since_us = 0U;
+    } else if (applied_power_left_pwm >= ENCODER_STALL_MIN_PWM) {
+        if (left_stalled_since_us == 0U) left_stalled_since_us = now_us;
+        else if ((uint32_t)(now_us - left_stalled_since_us) >=
+                 ENCODER_STALL_TIMEOUT_US) left_ok = 0U;
+    } else {
+        left_stalled_since_us = 0U;
+    }
+
+    if (right_speed > ENCODER_STALL_MAX_SPEED_CMS) {
+        right_ok = 1U;
+        right_stalled_since_us = 0U;
+    } else if (applied_power_right_pwm >= ENCODER_STALL_MIN_PWM) {
+        if (right_stalled_since_us == 0U) right_stalled_since_us = now_us;
+        else if ((uint32_t)(now_us - right_stalled_since_us) >=
+                 ENCODER_STALL_TIMEOUT_US) right_ok = 0U;
+    } else {
+        right_stalled_since_us = 0U;
+    }
+
+    return (left_ok != 0U && right_ok != 0U) ? 1U : 0U;
 }
 
 static Safety_State_t Main_SelectSafetyState(
@@ -310,7 +333,8 @@ int main(void) {
         bool rear_left_new;
         bool rear_right_new;
         float vehicle_speed_cms;
-        float applied_power_pwm;
+        float applied_power_left_pwm;
+        float applied_power_right_pwm;
         uint8_t movement_requested;
 
         Dev_Sonar_Process();
@@ -358,14 +382,23 @@ int main(void) {
             AbsoluteFloat(g_odometry.speed_right_cms));
         movement_requested = (drive_cmd == 'F' || drive_cmd == 'B' ||
                               drive_cmd == 'L' || drive_cmd == 'R') ? 1U : 0U;
-        applied_power_pwm = (pid_enable != 0U) ?
-            (applied_pwm_left + applied_pwm_right) * 0.5f :
-            ((float)control_speed_percent * 10.0f *
-             (float)safety_speed_percent / 100.0f);
-        if (safety_stop != 0U) applied_power_pwm = 0.0f;
+        if (pid_enable != 0U) {
+            applied_power_left_pwm = applied_pwm_left;
+            applied_power_right_pwm = applied_pwm_right;
+        } else {
+            applied_power_left_pwm =
+                (float)control_speed_percent * 10.0f *
+                (float)safety_speed_percent / 100.0f;
+            applied_power_right_pwm = applied_power_left_pwm;
+        }
+        if (safety_stop != 0U) {
+            applied_power_left_pwm = 0.0f;
+            applied_power_right_pwm = 0.0f;
+        }
         encoder_ok = Main_UpdateEncoderFeedback(current_time,
                                                 movement_requested,
-                                                applied_power_pwm);
+                                                applied_power_left_pwm,
+                                                applied_power_right_pwm);
 
         App_ForwardSafety_Process(
             drive_cmd == 'F', front_new, front_sonar.valid != 0U,
@@ -399,6 +432,8 @@ int main(void) {
             forward_output.stop_requested : 0U;
         if (front_fault_latched != 0U && drive_cmd == 'F') safety_stop = 1U;
         if (sonar_config_ok == 0U && drive_cmd == 'F') safety_stop = 1U;
+        if (pid_enable != 0U && movement_requested != 0U && encoder_ok == 0U)
+            safety_stop = 1U;
         safety_speed_percent = forward_output.speed_percent;
         if (rear_output.boost_active != 0U &&
             forward_output.state == SAFETY_STATE_SAFE)
@@ -526,10 +561,13 @@ int main(void) {
                 raw_temp, distance_cm, warn_code,
                 Encoder_GetCount_Left(), g_odometry.speed_left_cms,
                 g_odometry.total_distance_cm,
+                g_odometry.distance_left_cm,
+                g_odometry.distance_right_cm,
                 (int)safety_state, (int)rear_output.state,
                 (int)safety_side, (int)rear_output.boost_active,
                 (int)pid_enable, (int)encoder_ok,
-                rear_left_sonar.distance_cm, rear_right_sonar.distance_cm);
+                rear_left_sonar.distance_cm, rear_right_sonar.distance_cm,
+                pid_left.kp, pid_left.ki, pid_left.kd);
         }
 
         if ((current_time - last_display_task) >= TASK_DISPLAY_PERIOD_US) {

@@ -18,7 +18,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>🚀 Trạm Điều Khiển Xe IoT Pro</title>
+  <title>XE THÁM HIỂM IOT</title>
   <style>
     /* RESET & BASE CSS */
     * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; outline: none; }
@@ -40,18 +40,29 @@ const char MAIN_page[] PROGMEM = R"=====(
     .toggle-btn { flex: 1; padding: 10px 5px; border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer; border: none; color: white; transition: all 0.2s;}
     .toggle-btn.on { background: #2e7d32; }
     .toggle-btn.off { background: #c62828; }
-    .toggle-btn.mic-btn { background: #1565c0; }
+    .toggle-btn.horn-btn { background: #1565c0; }
+    .toggle-btn.horn-btn.active { background: #ef6c00; }
     .toggle-btn:active { transform: scale(0.95); }
-    
-    /* ANIMATIONS */
-    @keyframes pulse { 0% { background: #d50000; } 50% { background: #ff5252; } 100% { background: #d50000; } }
-    .recording { animation: pulse 1s infinite !important; }
 
     /* TELEMETRY DASHBOARD */
-    .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 8px; }
+    .dashboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
     .box { background: #242424; padding: 6px; border-radius: 6px; border: 1px solid #333; }
     .title { font-size: 8px; color: #aaa; font-weight: bold; margin-bottom: 2px; white-space: nowrap; }
     .val { font-size: 15px; font-weight: bold; font-family: monospace; }
+
+    /* PID TUNING: mặc định thu gọn để không thay đổi bố cục chính */
+    .pid-tuning { background: #202020; border: 1px solid #3b3b3b; border-radius: 6px; margin-bottom: 8px; text-align: left; }
+    .pid-tuning summary { padding: 7px 9px; color: #80deea; font-size: 10px; font-weight: bold; cursor: pointer; }
+    .pid-panel { padding: 0 8px 8px; }
+    .pid-row { display: grid; grid-template-columns: 25px 30px 1fr 30px; gap: 5px; align-items: center; margin-top: 5px; }
+    .pid-row label { font-size: 11px; font-weight: bold; color: #ddd; }
+    .pid-step { height: 28px; border: 0; border-radius: 5px; background: #424242; color: white; font-size: 16px; cursor: pointer; }
+    .pid-input { width: 100%; height: 28px; border: 1px solid #555; border-radius: 5px; background: #111; color: #fff; text-align: center; font-family: monospace; user-select: text; }
+    .pid-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .pid-action { flex: 1; padding: 7px 4px; border: 0; border-radius: 5px; color: white; font-size: 10px; font-weight: bold; cursor: pointer; }
+    .pid-apply { background: #2e7d32; }
+    .pid-default { background: #546e7a; }
+    .pid-state { margin-top: 6px; color: #b0bec5; font-size: 9px; text-align: center; }
     
     /* SPEED CONTROL SLIDER */
     .speed-box { background: #242424; padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; gap: 10px; margin-bottom: 8px;}
@@ -92,30 +103,49 @@ const char MAIN_page[] PROGMEM = R"=====(
       .right-panel { flex: 1; max-width: 550px; display: flex; flex-direction: column; justify-content: space-between; }
       .stream-container { flex: 1; border-width: 3px; border-radius: 16px; margin-bottom: 0; min-height: 500px; display: flex; align-items: center; justify-content: center; background: #050505; }
       .stream-container img { height: 100%; width: 100%; max-height: 75vh; object-fit: contain; border-radius: 13px; }
-      .ctrl-group { gap: 15px; margin-bottom: 15px; }
-      .toggle-btn { padding: 15px; font-size: 14px; border-radius: 10px; }
-      .dashboard { gap: 10px; margin-bottom: 15px; }
-      .box { padding: 12px; border-radius: 10px; }
-      .title { font-size: 11px; margin-bottom: 6px; }
-      .val { font-size: 24px; }
-      .speed-box { padding: 15px 20px; margin-bottom: 15px; border-radius: 10px; }
-      .speed-header { font-size: 15px; }
+      .ctrl-group { gap: 10px; margin-bottom: 8px; }
+      .toggle-btn { padding: 12px; font-size: 13px; border-radius: 10px; }
+      .dashboard { gap: 8px; margin-bottom: 8px; }
+      .box { padding: 8px; border-radius: 10px; }
+      .title { font-size: 10px; margin-bottom: 4px; }
+      .val { font-size: 20px; }
+      .pid-tuning { margin-bottom: 8px; border-radius: 10px; }
+      .pid-tuning summary { padding: 7px 10px; font-size: 12px; }
+      .pid-panel { padding: 0 12px 12px; }
+      .pid-row { grid-template-columns: 35px 40px 1fr 40px; gap: 8px; }
+      .pid-step, .pid-input { height: 34px; }
+      .speed-box { padding: 10px 15px; margin-bottom: 8px; border-radius: 10px; }
+      .speed-header { font-size: 13px; }
       .slider { height: 10px; }
       .slider::-webkit-slider-thumb { width: 26px; height: 26px; }
-      .status-bar { padding: 12px; font-size: 16px; margin-bottom: 15px; border-radius: 10px; }
-      .map-box { padding: 5px; margin-bottom: 25px; border-radius: 10px; }
+      .status-bar { padding: 9px; font-size: 14px; margin-bottom: 8px; border-radius: 10px; }
+      .map-box { padding: 4px; margin-bottom: 10px; border-radius: 10px; }
       .map-title { font-size: 13px; margin-bottom: 5px; }
-      canvas#mini-canvas { height: 180px; } 
-      .joypad { grid-template-columns: repeat(3, 85px); grid-template-rows: repeat(3, 85px); gap: 15px; margin: auto auto 0 auto; }
+      canvas#mini-canvas { height: 120px; } 
+      .joypad { grid-template-columns: repeat(3, 70px); grid-template-rows: repeat(3, 70px); gap: 10px; margin: auto auto 0 auto; }
       .btn { font-size: 36px; border-radius: 20px; box-shadow: 0 8px #1b5e20; }
       .btn:active { box-shadow: 0 3px #1b5e20; transform: translateY(5px); }
       #btn-S { font-size: 20px; box-shadow: 0 8px #b71c1c; }
       #btn-S:active { box-shadow: 0 3px #b71c1c; }
     }
+
+    @media screen and (max-width: 799px) {
+      .stream-container img { max-height: 180px; }
+      .pid-tuning { margin-bottom: 5px; }
+      .pid-tuning summary { padding: 5px 7px; }
+      .dashboard { margin-bottom: 5px; }
+      .box { padding: 4px; }
+      .title { font-size: 7px; }
+      .speed-box { padding: 6px 9px; margin-bottom: 5px; }
+      .status-bar { padding: 5px; margin-bottom: 5px; }
+      .map-box { margin-bottom: 8px; }
+      canvas#mini-canvas { height: 70px; }
+      .joypad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 6px; }
+    }
   </style>
 </head>
 <body>
-  <div class="header-title"><h3>🛰️ TRẠM ĐIỀU KHIỂN XE TỰ HÀNH IOT</h3></div>
+  <div class="header-title"><h3>🛰️ XE THÁM HIỂM IOT</h3></div>
 
   <div class="main-container">
     <!-- PANEL TRÁI: CAMERA STREAM -->
@@ -129,20 +159,53 @@ const char MAIN_page[] PROGMEM = R"=====(
     <div class="right-panel">
       <div class="ctrl-group">
         <button id="btn-pid" class="toggle-btn on" onclick="togglePID()">⚙️ PID: BẬT</button>
-        <button id="btn-voice" class="toggle-btn mic-btn" onclick="toggleVoice()">🎤 GIỌNG NÓI</button>
+        <button id="btn-horn" class="toggle-btn horn-btn">📢 CÒI</button>
         <button id="btn-flash" class="toggle-btn off" onclick="toggleFlash()">🔦 FLASH: TẮT</button>
       </div>
+
+
+      <details class="pid-tuning">
+        <summary>⚙️ HIỆU CHỈNH Kp / Ki / Kd</summary>
+        <div class="pid-panel">
+          <div class="pid-row">
+            <label for="pid-kp">Kp</label>
+            <button class="pid-step" onclick="adjustPid('kp', -0.10)">−</button>
+            <input id="pid-kp" class="pid-input" type="number" min="0" max="20" step="0.10" value="8.00" oninput="markPidDirty()">
+            <button class="pid-step" onclick="adjustPid('kp', 0.10)">+</button>
+          </div>
+          <div class="pid-row">
+            <label for="pid-ki">Ki</label>
+            <button class="pid-step" onclick="adjustPid('ki', -0.05)">−</button>
+            <input id="pid-ki" class="pid-input" type="number" min="0" max="10" step="0.05" value="2.00" oninput="markPidDirty()">
+            <button class="pid-step" onclick="adjustPid('ki', 0.05)">+</button>
+          </div>
+          <div class="pid-row">
+            <label for="pid-kd">Kd</label>
+            <button class="pid-step" onclick="adjustPid('kd', -0.01)">−</button>
+            <input id="pid-kd" class="pid-input" type="number" min="0" max="5" step="0.01" value="0.00" oninput="markPidDirty()">
+            <button class="pid-step" onclick="adjustPid('kd', 0.01)">+</button>
+          </div>
+          <div class="pid-actions">
+            <button class="pid-action pid-apply" onclick="applyPidTunings()">ÁP DỤNG</button>
+            <button class="pid-action pid-default" onclick="restoreDefaultPid()">MẶC ĐỊNH</button>
+          </div>
+          <div id="pid-state" class="pid-state">Đang dùng: Kp 8.00 · Ki 2.00 · Kd 0.00</div>
+        </div>
+      </details>
 
       <div class="dashboard">
         <div class="box"><div class="title">TỐC ĐỘ (CM/S)</div><span class="val" id="s" style="color:#b2ff59;">0.0</span></div>
         <div class="box"><div class="title">QUÃNG ĐƯỜNG</div><span class="val" id="m" style="color:#ffd54f;">0.0</span></div>
         <div class="box"><div class="title">NHIỆT ĐỘ (°C)</div><span class="val" id="t" style="color:#ff5252;">--</span></div>
-        <div class="box"><div class="title">VẬT CẢN (CM)</div><span class="val" id="d" style="color:#00e5ff;">--</span></div>
+        <div class="box"><div class="title">TRƯỚC (CM)</div><span class="val" id="d" style="color:#00e5ff;">--</span></div>
+        <div class="box"><div class="title">SAU (CM)</div><span class="val" id="rear" style="color:#80cbc4;">--</span></div>
       </div>
 
       <div class="speed-box">
-        <div class="speed-header">⚡ C.SUẤT DỰ PHÒNG (<span id="speed-display">80</span>%)</div>
-        <input type="range" min="20" max="100" value="80" class="slider" oninput="updateSpeed(this.value)">
+        <div class="speed-header">⚡ MỨC TỐC ĐỘ (<span id="speed-display">50</span>%)</div>
+        <input id="speed-slider" type="range" min="20" max="100" value="50" class="slider"
+               oninput="previewSpeed(this.value)" onchange="commitSpeed(this.value)"
+               onpointerup="finishSpeedControl(this)" onpointercancel="finishSpeedControl(this)">
       </div>
 
       <div class="status-bar" id="sys-status">✅ HỆ THỐNG AN TOÀN</div>
@@ -181,12 +244,127 @@ const char MAIN_page[] PROGMEM = R"=====(
     // MODULE ĐIỀU KHIỂN THIẾT BỊ (DEVICE CONTROL)
     // ==========================================
     let pidOn = true;
-    function togglePID() {
-      pidOn = !pidOn;
+    let pidToggleLocked = false;
+    let pendingPidState = null;
+    let lastConfirmedPidState = true;
+    let pidToggleTimer = null;
+
+    function renderPidButton() {
       let btn = document.getElementById("btn-pid");
       btn.className = pidOn ? "toggle-btn on" : "toggle-btn off";
       btn.innerHTML = pidOn ? "⚙️ PID: BẬT" : "⚙️ PID: TẮT";
-      fetch('/cmd?val=' + (pidOn ? 'P' : 'p'));
+    }
+
+    function finishPidToggle(confirmedState) {
+      clearTimeout(pidToggleTimer);
+      pidToggleTimer = null;
+      pidToggleLocked = false;
+      pendingPidState = null;
+      pidOn = confirmedState;
+      lastConfirmedPidState = confirmedState;
+      renderPidButton();
+    }
+
+    function togglePID() {
+      if (pidToggleLocked) return;
+
+      pendingPidState = !pidOn;
+      pidToggleLocked = true;
+      pidOn = pendingPidState;
+      renderPidButton();
+
+      pidToggleTimer = setTimeout(() => {
+        finishPidToggle(lastConfirmedPidState);
+      }, 1500);
+
+      fetch('/cmd?val=' + (pendingPidState ? 'P' : 'p'), { cache: "no-store" })
+        .catch(() => finishPidToggle(lastConfirmedPidState));
+    }
+
+    let pidInputsDirty = false;
+    let pendingPid = null;
+
+    function markPidDirty() {
+      pidInputsDirty = true;
+      document.getElementById('pid-state').innerText = "Giá trị mới chưa được áp dụng";
+    }
+
+    function adjustPid(name, delta) {
+      let input = document.getElementById('pid-' + name);
+      let value = parseFloat(input.value);
+      if (!Number.isFinite(value)) value = 0;
+      value = Math.max(parseFloat(input.min), Math.min(parseFloat(input.max), value + delta));
+      input.value = value.toFixed(2);
+      markPidDirty();
+    }
+
+    function restoreDefaultPid() {
+      document.getElementById('pid-kp').value = "8.00";
+      document.getElementById('pid-ki').value = "2.00";
+      document.getElementById('pid-kd').value = "0.00";
+      markPidDirty();
+    }
+
+    function applyPidTunings() {
+      let state = document.getElementById('pid-state');
+      if (activeCmd !== 'S') {
+        state.innerText = "Hãy dừng xe trước khi thay đổi PID";
+        return;
+      }
+
+      let kp = parseFloat(document.getElementById('pid-kp').value);
+      let ki = parseFloat(document.getElementById('pid-ki').value);
+      let kd = parseFloat(document.getElementById('pid-kd').value);
+      if (!Number.isFinite(kp) || !Number.isFinite(ki) || !Number.isFinite(kd) ||
+          kp < 0 || kp > 20 || ki < 0 || ki > 10 || kd < 0 || kd > 5) {
+        state.innerText = "Giá trị PID không hợp lệ";
+        return;
+      }
+
+      pendingPid = {
+        kp: Math.round(kp * 100),
+        ki: Math.round(ki * 100),
+        kd: Math.round(kd * 100)
+      };
+      state.innerText = "Đang gửi xuống STM32...";
+      fetch('/pid?kp=' + pendingPid.kp + '&ki=' + pendingPid.ki + '&kd=' + pendingPid.kd,
+            { cache: "no-store" })
+        .then(r => r.text().then(text => {
+          if (!r.ok) throw new Error(text);
+          state.innerText = "Đã gửi, đang chờ STM32 xác nhận...";
+        }))
+        .catch(e => {
+          pendingPid = null;
+          state.innerText = (e.message === 'STOP_REQUIRED') ?
+            "Hãy dừng xe trước khi thay đổi PID" : "Không gửi được hệ số PID";
+        });
+    }
+
+    function syncPidTelemetry(data) {
+      let kp = Number(data.pidKp);
+      let ki = Number(data.pidKi);
+      let kd = Number(data.pidKd);
+      if (!Number.isFinite(kp) || !Number.isFinite(ki) || !Number.isFinite(kd)) return;
+
+      let state = document.getElementById('pid-state');
+      let actual = {
+        kp: Math.round(kp * 100),
+        ki: Math.round(ki * 100),
+        kd: Math.round(kd * 100)
+      };
+      if (pendingPid && actual.kp === pendingPid.kp &&
+          actual.ki === pendingPid.ki && actual.kd === pendingPid.kd) {
+        pendingPid = null;
+        pidInputsDirty = false;
+        state.innerText = "Đã áp dụng: Kp " + kp.toFixed(2) +
+                          " · Ki " + ki.toFixed(2) + " · Kd " + kd.toFixed(2);
+      } else if (!pendingPid && !pidInputsDirty) {
+        document.getElementById('pid-kp').value = kp.toFixed(2);
+        document.getElementById('pid-ki').value = ki.toFixed(2);
+        document.getElementById('pid-kd').value = kd.toFixed(2);
+        state.innerText = "Đang dùng: Kp " + kp.toFixed(2) +
+                          " · Ki " + ki.toFixed(2) + " · Kd " + kd.toFixed(2);
+      }
     }
 
     let flashOn = false;
@@ -198,9 +376,103 @@ const char MAIN_page[] PROGMEM = R"=====(
       fetch('/flash?val=' + (flashOn ? '1' : '0'));
     }
 
-    function updateSpeed(val) {
+    let hornPressed = false;
+    let hornPressedAt = 0;
+    let hornReleaseTimer = null;
+    let hornKeepaliveTimer = null;
+
+    function renderHornButton() {
+      let btn = document.getElementById('btn-horn');
+      btn.className = hornPressed ? "toggle-btn horn-btn active" : "toggle-btn horn-btn";
+      btn.innerHTML = hornPressed ? "📢 CÒI: KÊU" : "📢 CÒI";
+    }
+
+    function sendHornState(active) {
+      fetch('/horn?val=' + (active ? '1' : '0'), {
+        cache: "no-store",
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    function pressHorn() {
+      clearTimeout(hornReleaseTimer);
+      hornReleaseTimer = null;
+      if (hornPressed) return;
+      hornPressed = true;
+      hornPressedAt = Date.now();
+      renderHornButton();
+      sendHornState(true);
+      hornKeepaliveTimer = setInterval(() => sendHornState(true), 250);
+    }
+
+    function releaseHorn() {
+      if (!hornPressed) return;
+      const remaining = 100 - (Date.now() - hornPressedAt);
+      if (remaining > 0) {
+        clearTimeout(hornReleaseTimer);
+        hornReleaseTimer = setTimeout(releaseHorn, remaining);
+        return;
+      }
+      clearInterval(hornKeepaliveTimer);
+      hornKeepaliveTimer = null;
+      hornPressed = false;
+      renderHornButton();
+      sendHornState(false);
+    }
+
+    let speedSendTimer = null;
+    let speedEditing = false;
+    let speedRequestInFlight = false;
+    let pendingSpeedValue = null;
+    let lastAcknowledgedSpeed = null;
+
+    function pumpSpeedRequest() {
+      if (speedRequestInFlight || pendingSpeedValue === null) return;
+
+      const value = pendingSpeedValue;
+      if (lastAcknowledgedSpeed !== null && value === lastAcknowledgedSpeed) {
+        pendingSpeedValue = null;
+        speedEditing = false;
+        return;
+      }
+
+      speedRequestInFlight = true;
+      fetch('/speed?val=' + value, {
+        cache: "no-store",
+        keepalive: true
+      }).then(response => {
+        if (response.ok) lastAcknowledgedSpeed = value;
+      }).catch(() => {}).finally(() => {
+        speedRequestInFlight = false;
+        if (pendingSpeedValue === value) pendingSpeedValue = null;
+        if (pendingSpeedValue !== null) pumpSpeedRequest();
+        else speedEditing = false;
+      });
+    }
+
+    function queueSpeed(val) {
+      clearTimeout(speedSendTimer);
+      speedSendTimer = null;
+      pendingSpeedValue = Number(val);
+      pumpSpeedRequest();
+    }
+
+    function previewSpeed(val) {
+      speedEditing = true;
       document.getElementById('speed-display').innerText = val;
-      fetch('/speed?val=' + val, { cache: "no-store" });
+      clearTimeout(speedSendTimer);
+      speedSendTimer = setTimeout(() => queueSpeed(val), 200);
+    }
+
+    function commitSpeed(val) {
+      speedEditing = true;
+      document.getElementById('speed-display').innerText = val;
+      queueSpeed(val);
+    }
+
+    function finishSpeedControl(slider) {
+      commitSpeed(slider.value);
+      slider.blur();
     }
 
     // ==========================================
@@ -214,21 +486,22 @@ const char MAIN_page[] PROGMEM = R"=====(
      * Bất cứ khi nào có thao tác nhả tay, request cũ đang kẹt sẽ bị trình duyệt
      * chủ động drop để mở đường cho request Stop.
      */
-    function sendCmd(cmd) { 
-      // Bỏ qua lệnh trùng lặp để tiết kiệm băng thông, trừ lệnh Stop luôn được gửi
-      if (cmd === activeCmd && cmd !== 'S') return; 
+    function sendCmd(cmd) {
       activeCmd = cmd;
-      
+
       // Kích hoạt tín hiệu hủy HTTP request cũ
-      fetchController.abort(); 
+      fetchController.abort();
       // Tạo controller mới cho request chuẩn bị gửi
       fetchController = new AbortController();
+      let requestController = fetchController;
 
-      fetch('/cmd?val=' + cmd, { 
-        cache: "no-store", 
-        signal: fetchController.signal // Gắn signal để theo dõi vòng đời
+      fetch('/cmd?val=' + cmd, {
+        cache: "no-store",
+        signal: requestController.signal // Gắn signal để theo dõi vòng đời
       }).catch(e => {
-        // Bỏ qua lỗi DOMException do ta chủ động abort
+        if (e.name !== 'AbortError' && fetchController === requestController) {
+          activeCmd = 'S';
+        }
       });
     }
 
@@ -242,9 +515,22 @@ const char MAIN_page[] PROGMEM = R"=====(
       return "";
     }
 
+    function validSonarValue(value) {
+      const distance = Number(value);
+      return Number.isFinite(distance) && distance > 0 && distance < 999 ? distance : null;
+    }
+
+    function rearDistance(data) {
+      const left = validSonarValue(data.rearLeft);
+      const right = validSonarValue(data.rearRight);
+      if (left === null) return right;
+      if (right === null) return left;
+      return Math.min(left, right);
+    }
+
     function updateSafetyStatus(data) {
       let sBar = document.getElementById('sys-status');
-      let side = safetySideText(data.side);
+      let rearCm = rearDistance(data);
       if (data.warn === 2) {
         sBar.innerText = "🚨 BÁO ĐỘNG QUÁ NHIỆT";
         sBar.style.backgroundColor = "#b71c1c";
@@ -267,23 +553,23 @@ const char MAIN_page[] PROGMEM = R"=====(
         sBar.innerText = "⚠️ FCW - VẬT CẢN PHÍA TRƯỚC";
         sBar.style.backgroundColor = "#ef6c00";
       } else if (data.safety === 6) {
-        sBar.innerText = "🚨 LÙI NGUY HIỂM" + side + " (" +
-                         Math.min(data.rearLeft, data.rearRight) + " CM)";
+        sBar.innerText = "🚨 LÙI NGUY HIỂM" +
+                         (rearCm === null ? "" : " (" + rearCm + " CM)");
         sBar.style.backgroundColor = "#b71c1c";
       } else if (data.safety === 5) {
-        sBar.innerText = "⚠️ CẢNH BÁO LÙI" + side;
+        sBar.innerText = "⚠️ CẢNH BÁO LÙI";
         sBar.style.backgroundColor = "#e65100";
       } else if (data.safety === 10) {
-        sBar.innerText = "⚡ NGUY HIỂM PHÍA SAU" + side + " - ĐANG BOOST";
+        sBar.innerText = "⚡ NGUY HIỂM PHÍA SAU - ĐANG BOOST";
         sBar.style.backgroundColor = "#6a1b9a";
       } else if (data.safety === 9) {
-        sBar.innerText = "🚨 VA CHẠM SAU NGUY HIỂM" + side;
+        sBar.innerText = "🚨 VA CHẠM SAU NGUY HIỂM";
         sBar.style.backgroundColor = "#b71c1c";
       } else if (data.safety === 8) {
-        sBar.innerText = "⚠️ CẢNH BÁO VA CHẠM SAU" + side;
+        sBar.innerText = "⚠️ CẢNH BÁO VA CHẠM SAU";
         sBar.style.backgroundColor = "#e65100";
       } else if (data.safety === 7) {
-        sBar.innerText = "⚠️ VẬT THỂ PHÍA SAU ĐANG ÁP SÁT" + side;
+        sBar.innerText = "⚠️ VẬT THỂ PHÍA SAU ĐANG ÁP SÁT";
         sBar.style.backgroundColor = "#ef6c00";
       } else {
         sBar.innerText = "✅ HỆ THỐNG AN TOÀN";
@@ -302,16 +588,26 @@ const char MAIN_page[] PROGMEM = R"=====(
           document.getElementById('d').innerText = data.dist;
           document.getElementById('s').innerText = data.spd.toFixed(1);
           document.getElementById('m').innerText = data.trav.toFixed(1);
-          currentSpd = data.spd; 
-
-          pidOn = data.pid !== 0;
-          let pidBtn = document.getElementById("btn-pid");
-          pidBtn.className = pidOn ? "toggle-btn on" : "toggle-btn off";
-          pidBtn.innerHTML = pidOn ? "⚙️ PID: BẬT" : "⚙️ PID: TẮT";
-          
-          if(!voiceTimerActive || data.warn === 2 || data.safety !== 0) {
-            updateSafetyStatus(data);
+          let rearCm = rearDistance(data);
+          document.getElementById('rear').innerText = rearCm === null ? "--" : rearCm;
+          if (!speedEditing && Number.isFinite(Number(data.speedSet))) {
+            lastAcknowledgedSpeed = Number(data.speedSet);
+            document.getElementById('speed-slider').value = data.speedSet;
+            document.getElementById('speed-display').innerText = data.speedSet;
           }
+          updateMapFromEncoders(data.wheelLeft, data.wheelRight);
+
+          let reportedPidState = data.pid !== 0;
+          if (pidToggleLocked && reportedPidState === pendingPidState) {
+            finishPidToggle(reportedPidState);
+          } else if (!pidToggleLocked) {
+            pidOn = reportedPidState;
+            lastConfirmedPidState = reportedPidState;
+            renderPidButton();
+          }
+          syncPidTelemetry(data);
+          
+          updateSafetyStatus(data);
           // Tăng chu kỳ lấy mẫu từ 300ms lên 500ms để giảm nghẽn mạng
           setTimeout(fetchTelemetry, 500); 
         })
@@ -325,27 +621,55 @@ const char MAIN_page[] PROGMEM = R"=====(
     // ==========================================
     // MODULE BẢN ĐỒ DEAD-RECKONING
     // ==========================================
+    const WHEEL_TRACK_CM = 13.5;
+    const MAX_ENCODER_STEP_CM = 100.0;
     let path = [{x: 0, y: 0}];
     let carX = 0, carY = 0;
     let angle = -Math.PI / 2;
-    let lastTime = Date.now();
-    let currentSpd = 0;
+    let previousEncoderLeft = null;
+    let previousEncoderRight = null;
 
-    function updatePhysics() {
-      let now = Date.now();
-      let dt = (now - lastTime) / 1000.0;
-      lastTime = now;
-      if (activeCmd === 'L') angle -= 2.5 * dt;
-      if (activeCmd === 'R') angle += 2.5 * dt;
-      if (currentSpd > 0.5) {
-        let distStep = currentSpd * dt;
-        if (activeCmd === 'B') distStep = -distStep;
-        carX += Math.cos(angle) * distStep;
-        carY += Math.sin(angle) * distStep;
-        let lastPt = path[path.length-1];
-        let d2 = Math.pow(carX - lastPt.x, 2) + Math.pow(carY - lastPt.y, 2);
-        if (d2 > 1.0) path.push({x: carX, y: carY}); // Tối ưu: Lọc bớt điểm neo
+    function updateMapFromEncoders(leftValue, rightValue) {
+      const left = Number(leftValue);
+      const right = Number(rightValue);
+      if (!Number.isFinite(left) || !Number.isFinite(right)) return;
+
+      if (previousEncoderLeft === null || previousEncoderRight === null) {
+        previousEncoderLeft = left;
+        previousEncoderRight = right;
+        return;
       }
+
+      if (Math.abs(left) < 0.2 && Math.abs(right) < 0.2 &&
+          (Math.abs(previousEncoderLeft) > 2.0 ||
+           Math.abs(previousEncoderRight) > 2.0)) {
+        previousEncoderLeft = left;
+        previousEncoderRight = right;
+        return;
+      }
+
+      const dLeft = left - previousEncoderLeft;
+      const dRight = right - previousEncoderRight;
+      previousEncoderLeft = left;
+      previousEncoderRight = right;
+
+      /* Bỏ mẫu nhảy bất thường để nhiễu encoder không kéo hỏng toàn bộ map. */
+      if (Math.abs(dLeft) > MAX_ENCODER_STEP_CM ||
+          Math.abs(dRight) > MAX_ENCODER_STEP_CM) return;
+
+      const distanceStep = (dLeft + dRight) / 2.0;
+      /* Trục Y canvas hướng xuống nên dấu góc đảo so với hệ tọa độ toán học. */
+      const angleStep = (dLeft - dRight) / WHEEL_TRACK_CM;
+      const middleAngle = angle + angleStep / 2.0;
+
+      carX += distanceStep * Math.cos(middleAngle);
+      carY += distanceStep * Math.sin(middleAngle);
+      angle += angleStep;
+      angle = Math.atan2(Math.sin(angle), Math.cos(angle));
+
+      let lastPt = path[path.length - 1];
+      let d2 = Math.pow(carX - lastPt.x, 2) + Math.pow(carY - lastPt.y, 2);
+      if (d2 > 1.0) path.push({x: carX, y: carY});
     }
 
     function drawCanvas(id) {
@@ -377,7 +701,6 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
 
     function renderMap() {
-      updatePhysics();
       drawCanvas('mini-canvas');
       if(document.getElementById('map-modal').style.display === 'flex') drawCanvas('big-canvas');
       requestAnimationFrame(renderMap);
@@ -393,22 +716,59 @@ const char MAIN_page[] PROGMEM = R"=====(
     function attachControl(id, cmd) {
       let el = document.getElementById(id);
       if (!el) return;
-      let start = (e) => { if(e.cancelable) e.preventDefault(); sendCmd(cmd); };
-      let stop = (e) => { if(e.cancelable) e.preventDefault(); sendCmd('S'); };
-      el.addEventListener('touchstart', start, { passive: false });
-      el.addEventListener('touchend', stop, { passive: false });
-      el.addEventListener('mousedown', start);
-      el.addEventListener('mouseup', stop);
-      el.addEventListener('mouseleave', stop);
+      let engaged = false;
+      let start = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (engaged) return;
+        engaged = true;
+        if (el.setPointerCapture) el.setPointerCapture(e.pointerId);
+        sendCmd(cmd);
+      };
+      let stop = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (!engaged) return;
+        engaged = false;
+        sendCmd('S');
+      };
+      el.addEventListener('pointerdown', start);
+      el.addEventListener('pointerup', stop);
+      el.addEventListener('pointercancel', stop);
+      el.addEventListener('lostpointercapture', stop);
     }
     attachControl('btn-F', 'F'); attachControl('btn-B', 'B');
     attachControl('btn-L', 'L'); attachControl('btn-R', 'R');
+
+    let hornButton = document.getElementById('btn-horn');
+    hornButton.addEventListener('pointerdown', function(e) {
+      if (e.cancelable) e.preventDefault();
+      if (hornButton.setPointerCapture) hornButton.setPointerCapture(e.pointerId);
+      pressHorn();
+    });
+    hornButton.addEventListener('pointerup', releaseHorn);
+    hornButton.addEventListener('pointercancel', releaseHorn);
+    hornButton.addEventListener('lostpointercapture', releaseHorn);
+
+    function releaseControls() {
+      if (activeCmd !== 'S') sendCmd('S');
+      if (hornPressed) {
+        clearTimeout(hornReleaseTimer);
+        clearInterval(hornKeepaliveTimer);
+        hornReleaseTimer = null;
+        hornKeepaliveTimer = null;
+        hornPressed = false;
+        renderHornButton();
+        sendHornState(false);
+      }
+    }
+    window.addEventListener('blur', releaseControls);
+    window.addEventListener('pagehide', releaseControls);
     document.addEventListener('contextmenu', event => event.preventDefault()); // Chặn Menu chuột phải
 
     /* XỬ LÝ PHÍM BẤM (KEYBOARD INTERFACE) */
     let keyMap = { 'KeyW': 'F', 'ArrowUp': 'F', 'KeyS': 'B', 'ArrowDown': 'B', 'KeyA': 'L', 'ArrowLeft': 'L', 'KeyD': 'R', 'ArrowRight': 'R' };
     let activeKey = null;
     window.addEventListener('keydown', function(e) {
+      if (e.target && e.target.tagName === 'INPUT') return;
       if (keyMap[e.code] && activeKey !== e.code) {
         e.preventDefault(); activeKey = e.code;
         let cmd = keyMap[e.code]; sendCmd(cmd);
@@ -424,98 +784,6 @@ const char MAIN_page[] PROGMEM = R"=====(
       }
     });
 
-    /* ==========================================
-       MODULE ĐIỀU KHIỂN GIỌNG NÓI (WEB SPEECH API)
-       ========================================== */
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition;
-    let isListening = false;
-    let voiceTimer = null;
-    let voiceTimerActive = false;
-
-    if (SpeechRecognition) {
-      recognition = new SpeechRecognition();
-      recognition.lang = 'vi-VN'; 
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onstart = function() {
-        isListening = true;
-        let btn = document.getElementById('btn-voice');
-        btn.innerHTML = "🔴 ĐANG NGHE...";
-        btn.classList.add('recording');
-      };
-
-      recognition.onresult = function(event) {
-        let transcript = event.results[0][0].transcript.toLowerCase();
-        processVoiceCommand(transcript);
-      };
-
-      recognition.onerror = function(event) {
-        if (event.error === 'not-allowed') alert("Lỗi: Yêu cầu cấp quyền Micro trên trình duyệt!");
-        stopListeningUI();
-      };
-
-      recognition.onend = function() { stopListeningUI(); };
-    }
-
-    function toggleVoice() {
-      if (!SpeechRecognition) {
-        alert("Thiếu API hỗ trợ! Yêu cầu sử dụng Google Chrome bản mới nhất.");
-        return;
-      }
-      if (isListening) recognition.stop();
-      else recognition.start();
-    }
-
-    function stopListeningUI() {
-      isListening = false;
-      let btn = document.getElementById('btn-voice');
-      btn.innerHTML = "🎤 GIỌNG NÓI";
-      btn.classList.remove('recording');
-    }
-
-    function processVoiceCommand(text) {
-      clearTimeout(voiceTimer); 
-      let cmd = 'S';
-      let actionText = "Dừng lại";
-      
-      // Khớp từ khóa logic lệnh
-      if (text.includes("tiến") || text.includes("lên")) { cmd = 'F'; actionText = "Tiến lên"; }
-      else if (text.includes("lùi") || text.includes("xuống")) { cmd = 'B'; actionText = "Đi lùi"; }
-      else if (text.includes("trái")) { cmd = 'L'; actionText = "Rẽ trái"; }
-      else if (text.includes("phải")) { cmd = 'R'; actionText = "Rẽ phải"; }
-      else if (text.includes("dừng")) { cmd = 'S'; actionText = "Dừng lại"; }
-      
-      // Parser thông số thời gian
-      let sec = 0;
-      let match = text.match(/\d+/);
-      if (match) sec = parseInt(match[0]);
-      else if (text.includes("một") || text.includes("mốt")) sec = 1;
-      else if (text.includes("hai")) sec = 2;
-      else if (text.includes("ba")) sec = 3;
-      else if (text.includes("bốn")) sec = 4;
-      else if (text.includes("năm")) sec = 5;
-
-      let sBar = document.getElementById('sys-status');
-      sBar.style.backgroundColor = "#006064";
-      voiceTimerActive = true;
-      
-      if (cmd !== 'S' && sec > 0) {
-        sBar.innerText = "🗣️ Lệnh: " + actionText + " trong " + sec + " giây...";
-        sendCmd(cmd);
-        voiceTimer = setTimeout(() => {
-          sendCmd('S');
-          sBar.innerText = "✅ Tự động kích hoạt phanh an toàn!";
-          sBar.style.backgroundColor = "#1b5e20";
-          voiceTimerActive = false;
-        }, sec * 1000);
-      } else {
-        sBar.innerText = "🗣️ Lệnh thủ công: " + actionText;
-        sendCmd(cmd);
-        setTimeout(() => { voiceTimerActive = false; }, 2000); 
-      }
-    }
   </script>
 </body>
 </html>

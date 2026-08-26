@@ -4,14 +4,16 @@
 
 #define FS_SYSTEM_DELAY_S          0.120f
 #define FS_FCW_TIME_S              0.300f
-#define FS_COMFORT_DECEL_MPS2      2.000f
+//#define FS_COMFORT_DECEL_MPS2      2.000f
+#define FS_COMFORT_DECEL_MPS2      1.500f
 #define FS_EMERGENCY_DECEL_MPS2    6.000f
 #define FS_DISTANCE_MARGIN_M       0.050f
 #define FS_RISK_CONFIRM_SAMPLES    2U
 #define FS_CLEAR_CONFIRM_SAMPLES   3U
 #define FS_INVALID_SAMPLES         3U
 #define FS_HYSTERESIS_CM           1.0f
-#define FS_PRE_BRAKE_MIN_PERCENT   50U
+//#define FS_PRE_BRAKE_MIN_PERCENT   50U
+#define FS_PRE_BRAKE_MIN_PERCENT   40U
 #define FS_AEB_RELEASE_MARGIN_CM   5.0f
 #define FS_AEB_RELEASE_SAMPLES     3U
 

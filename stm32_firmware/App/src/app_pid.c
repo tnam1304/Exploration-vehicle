@@ -21,6 +21,16 @@ void PID_Init(PID_Controller_t *pid, float kp, float ki, float kd, float min_out
     pid->max_output = max_out;
 }
 
+void PID_SetTunings(PID_Controller_t *pid, float kp, float ki, float kd) {
+    pid->kp = kp;
+    pid->ki = ki;
+    pid->kd = kd;
+    pid->integral_limit = (ki != 0.0f) ?
+        ((pid->max_output - pid->min_output) /
+         (2.0f * ((ki > 0.0f) ? ki : -ki))) : 0.0f;
+    PID_Reset(pid);
+}
+
 float PID_Compute(PID_Controller_t *pid, float measured_value, float dt_s) {
     /* Tránh lỗi chia cho 0 hoặc khoảng thời gian lấy mẫu không hợp lệ */
     if (dt_s <= 0.0f) {

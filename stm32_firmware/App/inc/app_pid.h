@@ -44,6 +44,15 @@ extern PID_Controller_t pid_right;
 void PID_Init(PID_Controller_t *pid, float kp, float ki, float kd, float min_out, float max_out);
 
 /**
+ * @brief Cập nhật hệ số PID khi chạy và xóa trạng thái điều khiển cũ
+ * @param pid Con trỏ tới đối tượng PID
+ * @param kp Hệ số P mới
+ * @param ki Hệ số I mới
+ * @param kd Hệ số D mới
+ */
+void PID_SetTunings(PID_Controller_t *pid, float kp, float ki, float kd);
+
+/**
  * @brief Tính toán tín hiệu điều khiển PID
  * @param pid Con trỏ tới đối tượng PID
  * @param measured_value Giá trị thực tế đo được từ cảm biến/encoder

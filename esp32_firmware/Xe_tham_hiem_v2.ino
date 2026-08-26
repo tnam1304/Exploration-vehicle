@@ -46,6 +46,8 @@ volatile int   warn_val    = 0;
 volatile long  enc_val     = 0;
 volatile float speed_val   = 0.0;
 volatile float travel_dist = 0.0;
+volatile float wheel_left_dist = 0.0;
+volatile float wheel_right_dist = 0.0;
 volatile int   safety_val  = 0;
 volatile int   rear_val    = 0;
 volatile int   side_val    = 0;
@@ -54,9 +56,16 @@ volatile int   pid_val     = 1;
 volatile int   encoder_ok_val = 1;
 volatile int   rear_left_val  = 0;
 volatile int   rear_right_val = 0;
+volatile int   pid_kp_scaled  = 800;
+volatile int   pid_ki_scaled  = 200;
+volatile int   pid_kd_scaled  = 0;
 
 volatile char current_cmd   = 'S';
-volatile int  current_speed = 80;
+volatile char current_drive_cmd = 'S';
+volatile int  current_speed = 50;
+volatile bool manual_horn_active = false;
+volatile uint8_t horn_release_retries = 0;
+volatile unsigned long last_horn_heartbeat_time = 0;
 
 // Bộ đếm thời gian cho cơ chế Failsafe Watchdog
 volatile unsigned long last_heartbeat_time = 0; 
@@ -81,15 +90,19 @@ static esp_err_t index_handler(httpd_req_t *req) {
  */
 static esp_err_t data_handler(httpd_req_t *req) {
   last_heartbeat_time = millis(); // Refresh Heartbeat
-  char json[360];
+  char json[480];
   snprintf(json, sizeof(json),
            "{\"temp\":%d,\"dist\":%d,\"warn\":%d,\"enc\":%ld,"
            "\"spd\":%.1f,\"trav\":%.1f,\"safety\":%d,\"rear\":%d,"
-           "\"side\":%d,\"boost\":%d,\"pid\":%d,\"encOk\":%d,"
-           "\"rearLeft\":%d,\"rearRight\":%d}",
+           "\"side\":%d,\"boost\":%d,\"pid\":%d,\"encOk\":%d,\"speedSet\":%d,"
+           "\"rearLeft\":%d,\"rearRight\":%d,"
+           "\"pidKp\":%.2f,\"pidKi\":%.2f,\"pidKd\":%.2f,"
+           "\"wheelLeft\":%.1f,\"wheelRight\":%.1f}",
            temp_val, dist_val, warn_val, enc_val, speed_val, travel_dist,
            safety_val, rear_val, side_val, boost_val, pid_val,
-           encoder_ok_val, rear_left_val, rear_right_val);
+           encoder_ok_val, current_speed, rear_left_val, rear_right_val,
+           pid_kp_scaled / 100.0, pid_ki_scaled / 100.0,
+           pid_kd_scaled / 100.0, wheel_left_dist, wheel_right_dist);
            
   httpd_resp_set_type(req, "application/json");
   return httpd_resp_send(req, json, strlen(json));
@@ -106,6 +119,18 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
     char val[8];
     if (httpd_query_key_value(buf, "val", val, sizeof(val)) == ESP_OK) {
       char new_cmd = val[0];
+
+      /* PID là lệnh cấu hình một lần, không được thay thế heartbeat lái xe. */
+      if (new_cmd == 'P' || new_cmd == 'p') {
+        Serial.printf("C:%c\n", new_cmd);
+        httpd_resp_set_type(req, "text/plain");
+        return httpd_resp_send(req, "OK", 2);
+      }
+
+      if (new_cmd == 'F' || new_cmd == 'B' || new_cmd == 'L' ||
+          new_cmd == 'R' || new_cmd == 'S') {
+        current_drive_cmd = new_cmd;
+      }
       
       // Gửi UART trực tiếp khi có sự thay đổi trạng thái hoặc lệnh phanh
       if (current_cmd != new_cmd || new_cmd == 'S') {
@@ -128,11 +153,60 @@ static esp_err_t speed_handler(httpd_req_t *req) {
   if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
     char val[8];
     if (httpd_query_key_value(buf, "val", val, sizeof(val)) == ESP_OK) {
-      current_speed = atoi(val);
+      int requested_speed = atoi(val);
+      if (requested_speed < 20 || requested_speed > 100) {
+        httpd_resp_set_status(req, "400 Bad Request");
+        return httpd_resp_send(req, "INVALID_SPEED", HTTPD_RESP_USE_STRLEN);
+      }
+      current_speed = requested_speed;
       /* Định dạng V:xx\n chuẩn xác với STM32 Parser */
-      Serial.printf("V:%d\n", current_speed); 
+      Serial.printf("V:%d\n", current_speed);
     }
   }
+  httpd_resp_set_type(req, "text/plain");
+  return httpd_resp_send(req, "OK", 2);
+}
+
+static bool parse_pid_query_value(const char *text, int max_value, int *value) {
+  int parsed = 0;
+  if (text == NULL || text[0] == '\0') return false;
+
+  for (size_t i = 0; text[i] != '\0'; i++) {
+    if (text[i] < '0' || text[i] > '9') return false;
+    parsed = parsed * 10 + (text[i] - '0');
+    if (parsed > max_value) return false;
+  }
+
+  *value = parsed;
+  return true;
+}
+
+/**
+ * @brief Gửi bộ Kp/Ki/Kd mới xuống STM32; giá trị query được scale 100 lần
+ */
+static esp_err_t pid_tuning_handler(httpd_req_t *req) {
+  char query[96];
+  char kp_text[8], ki_text[8], kd_text[8];
+  int kp, ki, kd;
+
+  last_heartbeat_time = millis();
+  if (current_drive_cmd != 'S') {
+    httpd_resp_set_status(req, "409 Conflict");
+    return httpd_resp_send(req, "STOP_REQUIRED", HTTPD_RESP_USE_STRLEN);
+  }
+
+  if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK ||
+      httpd_query_key_value(query, "kp", kp_text, sizeof(kp_text)) != ESP_OK ||
+      httpd_query_key_value(query, "ki", ki_text, sizeof(ki_text)) != ESP_OK ||
+      httpd_query_key_value(query, "kd", kd_text, sizeof(kd_text)) != ESP_OK ||
+      !parse_pid_query_value(kp_text, 2000, &kp) ||
+      !parse_pid_query_value(ki_text, 1000, &ki) ||
+      !parse_pid_query_value(kd_text, 500, &kd)) {
+    httpd_resp_set_status(req, "400 Bad Request");
+    return httpd_resp_send(req, "INVALID_PID", HTTPD_RESP_USE_STRLEN);
+  }
+
+  Serial.printf("G:%d,%d,%d\n", kp, ki, kd);
   httpd_resp_set_type(req, "text/plain");
   return httpd_resp_send(req, "OK", 2);
 }
@@ -152,6 +226,28 @@ static esp_err_t flash_handler(httpd_req_t *req) {
   }
   httpd_resp_set_type(req, "text/plain");
   return httpd_resp_send(req, "OK", 2);
+}
+
+/**
+ * @brief Còi thủ công dạng nhấn giữ; cảnh báo an toàn vẫn do STM32 ưu tiên.
+ */
+static esp_err_t horn_handler(httpd_req_t *req) {
+  last_heartbeat_time = millis();
+  char buf[32];
+  if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
+    char val[8];
+    if (httpd_query_key_value(buf, "val", val, sizeof(val)) == ESP_OK &&
+        (val[0] == '0' || val[0] == '1') && val[1] == '\0') {
+      manual_horn_active = (val[0] == '1');
+      horn_release_retries = manual_horn_active ? 0U : 3U;
+      if (manual_horn_active) last_horn_heartbeat_time = millis();
+      Serial.printf("C:%c\n", manual_horn_active ? 'H' : 'h');
+      httpd_resp_set_type(req, "text/plain");
+      return httpd_resp_send(req, "OK", 2);
+    }
+  }
+  httpd_resp_set_status(req, "400 Bad Request");
+  return httpd_resp_send(req, "INVALID_HORN", HTTPD_RESP_USE_STRLEN);
 }
 
 /**
@@ -200,14 +296,18 @@ void startCameraServer() {
   httpd_uri_t data_uri  = { .uri = "/data",  .method = HTTP_GET, .handler = data_handler,  .user_ctx = NULL };
   httpd_uri_t cmd_uri   = { .uri = "/cmd",   .method = HTTP_GET, .handler = cmd_handler,   .user_ctx = NULL };
   httpd_uri_t speed_uri = { .uri = "/speed", .method = HTTP_GET, .handler = speed_handler, .user_ctx = NULL };
+  httpd_uri_t pid_uri   = { .uri = "/pid",   .method = HTTP_GET, .handler = pid_tuning_handler, .user_ctx = NULL };
   httpd_uri_t flash_uri = { .uri = "/flash", .method = HTTP_GET, .handler = flash_handler, .user_ctx = NULL };
+  httpd_uri_t horn_uri  = { .uri = "/horn",  .method = HTTP_GET, .handler = horn_handler, .user_ctx = NULL };
 
   if (httpd_start(&camera_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(camera_httpd, &index_uri);
     httpd_register_uri_handler(camera_httpd, &data_uri);
     httpd_register_uri_handler(camera_httpd, &cmd_uri);
     httpd_register_uri_handler(camera_httpd, &speed_uri);
+    httpd_register_uri_handler(camera_httpd, &pid_uri);
     httpd_register_uri_handler(camera_httpd, &flash_uri);
+    httpd_register_uri_handler(camera_httpd, &horn_uri);
   }
 
   // Server chuyên dụng cho Video Streaming (Port 81)
@@ -232,7 +332,7 @@ void startCameraServer() {
  * Sử dụng kỹ thuật Static Memory Allocation (C-string) để tránh phân mảnh Heap
  */
 void processSerialUART() {
-  static char rx_buf[160];
+  static char rx_buf[192];
   static int rx_idx = 0;
 
   while (Serial.available() > 0) {
@@ -245,13 +345,16 @@ void processSerialUART() {
         int p_t = 0, p_d = 0, p_w = 0, p_s = 0, p_tr = 0;
         int p_a = 0, p_r = 0, p_x = 0, p_b = 0, p_p = 1, p_i = 1;
         int p_dl = 0, p_dr = 0;
+        int p_kp = 800, p_ki = 200, p_kd = 0;
         long p_e = 0;
+        long p_el = 0, p_er = 0;
         
         int parsed = sscanf(rx_buf,
-                            "T%d;D%d;W%d;E%ld;S%d;M%d;A%d;R%d;X%d;B%d;P%d;I%d;DL%d;DR%d",
+                            "T%d;D%d;W%d;E%ld;S%d;M%d;A%d;R%d;X%d;B%d;P%d;I%d;DL%d;DR%d;KP%d;KI%d;KD%d;EL%ld;ER%ld",
                             &p_t, &p_d, &p_w, &p_e, &p_s, &p_tr,
                             &p_a, &p_r, &p_x, &p_b, &p_p, &p_i,
-                            &p_dl, &p_dr);
+                            &p_dl, &p_dr, &p_kp, &p_ki, &p_kd,
+                            &p_el, &p_er);
                             
         if (parsed >= 3) {
           temp_val = p_t;
@@ -271,6 +374,15 @@ void processSerialUART() {
             encoder_ok_val = p_i;
             rear_left_val  = p_dl;
             rear_right_val = p_dr;
+          }
+          if (parsed >= 17) {
+            pid_kp_scaled = p_kp;
+            pid_ki_scaled = p_ki;
+            pid_kd_scaled = p_kd;
+          }
+          if (parsed >= 19) {
+            wheel_left_dist = p_el / 10.0;
+            wheel_right_dist = p_er / 10.0;
           }
         }
       }
@@ -308,19 +420,34 @@ void setup() {
   // Khởi phát mạng WiFi nội bộ
   WiFi.softAP(ssid, password);
   startCameraServer();
+  /* Đồng bộ giá trị mặc định với Web và STM32 sau khi hai MCU đã khởi động. */
+  Serial.printf("V:%d\n", current_speed);
 }
 
 void loop() {
   processSerialUART();
 
+  /* Tự nhả còi nếu trình duyệt mất sự kiện pointerup hoặc request nhả bị rơi. */
+  if (manual_horn_active &&
+      (millis() - last_horn_heartbeat_time > 700)) {
+    manual_horn_active = false;
+    horn_release_retries = 3U;
+    Serial.print("C:h\n");
+  }
+
   /**
    * CƠ CHẾ AN TOÀN (FAILSAFE WATCHDOG)
    * Kích hoạt ép phanh phần cứng ngay lập tức nếu mất tín hiệu Web > 1.2s
    */
-  if (current_cmd != 'S' && (millis() - last_heartbeat_time > 1200)) {
-    current_cmd = 'S'; 
+  if ((current_cmd != 'S' || manual_horn_active) &&
+      (millis() - last_heartbeat_time > 1200)) {
+    current_cmd = 'S';
+    current_drive_cmd = 'S';
+    manual_horn_active = false;
+    horn_release_retries = 0U;
     /* Định dạng lại lệnh gửi phanh khẩn cấp cho STM32 */
-    Serial.printf("C:%c\n", current_cmd); 
+    Serial.printf("C:%c\n", current_cmd);
+    Serial.print("C:h\n");
   }
 
   /**
@@ -330,7 +457,14 @@ void loop() {
   static unsigned long last_cmd_time = 0;
   if (millis() - last_cmd_time > 50) {
     /* Định dạng lại lệnh gửi theo nhịp Heartbeat cho STM32 */
-    Serial.printf("C:%c\n", current_cmd); 
+    Serial.printf("C:%c\n", current_cmd);
+    if (manual_horn_active) {
+      /* C:S có thể xóa còi khi xe đứng yên, vì vậy C:H phải gửi sau lệnh lái. */
+      Serial.print("C:H\n");
+    } else if (horn_release_retries > 0U) {
+      Serial.print("C:h\n");
+      horn_release_retries--;
+    }
     last_cmd_time = millis();
   }
   

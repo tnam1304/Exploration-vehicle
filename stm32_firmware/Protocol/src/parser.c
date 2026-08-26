@@ -9,7 +9,7 @@
 #include "app_safety.h"
 #include "protocol_uart.h"
 
-/* Mỗi lệnh từ ESP32 là một dòng: C:<ký_tự> hoặc V:<20..100>. */
+/* Mỗi lệnh từ ESP32 là một dòng: C:<ký_tự>, V:<20..100> hoặc G:Kp,Ki,Kd. */
 static char rx_buf[PARSER_RX_BUF_SIZE];
 static uint8_t rx_idx = 0;
 
@@ -118,6 +118,50 @@ static void Parser_HandleSpeed(void) {
     }
 }
 
+static void Parser_HandlePidTunings(void) {
+    uint16_t gains[3] = {0U, 0U, 0U};
+    uint8_t field = 0U;
+    uint8_t has_digit = 0U;
+
+    if (rx_idx < 7U || drive_cmd != 'S') {
+        return;
+    }
+
+    for (uint8_t i = 2U; i < rx_idx; i++) {
+        char c = rx_buf[i];
+        if (c >= '0' && c <= '9') {
+            has_digit = 1U;
+            gains[field] = (uint16_t)(gains[field] * 10U +
+                                      (uint16_t)(c - '0'));
+            if (gains[field] > PID_KP_MAX_SCALED) {
+                return;
+            }
+        } else if (c == ',' && has_digit != 0U && field < 2U) {
+            field++;
+            has_digit = 0U;
+        } else {
+            return;
+        }
+    }
+
+    if (field != 2U || has_digit == 0U ||
+        gains[0] > PID_KP_MAX_SCALED ||
+        gains[1] > PID_KI_MAX_SCALED ||
+        gains[2] > PID_KD_MAX_SCALED) {
+        return;
+    }
+
+    PID_SetTunings(&pid_left,
+                   (float)gains[0] / PID_GAIN_SCALE,
+                   (float)gains[1] / PID_GAIN_SCALE,
+                   (float)gains[2] / PID_GAIN_SCALE);
+    PID_SetTunings(&pid_right,
+                   (float)gains[0] / PID_GAIN_SCALE,
+                   (float)gains[1] / PID_GAIN_SCALE,
+                   (float)gains[2] / PID_GAIN_SCALE);
+    Parser_RefreshLink();
+}
+
 static void Parser_HandleFrame(void) {
     rx_buf[rx_idx] = '\0';
 
@@ -125,6 +169,8 @@ static void Parser_HandleFrame(void) {
         Parser_HandleControl(rx_buf[2]);
     } else if (rx_idx >= 3 && rx_buf[0] == 'V' && rx_buf[1] == ':') {
         Parser_HandleSpeed();
+    } else if (rx_idx >= 7 && rx_buf[0] == 'G' && rx_buf[1] == ':') {
+        Parser_HandlePidTunings();
     }
 }
 

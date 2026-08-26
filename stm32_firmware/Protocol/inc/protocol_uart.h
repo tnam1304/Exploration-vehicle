@@ -12,7 +12,7 @@
 /* ========================================================================== */
 /* HẰNG SỐ CẤU HÌNH TRUYỀN THÔNG (UART CONFIGURATION CONSTANTS)               */
 /* ========================================================================== */
-#define UART_TX_BUF_SIZE            160         /* Kích thước bộ đệm telemetry mở rộng */
+#define UART_TX_BUF_SIZE            192         /* Đủ chứa thêm quãng đường hai encoder */
 
 #define TEMP_SENSOR_ERROR_RAW      -9999        /* Mã lỗi nhiệt độ thô */
 #define TEMP_SENSOR_ERROR_DISP     -99          /* Hiển thị lỗi nhiệt độ (°C) */
@@ -22,6 +22,7 @@
 #define SONAR_ERROR_DISP_DIST       0           /* Hiển thị lỗi khoảng cách (cm) */
 
 #define TELEMETRY_FLOAT_SCALE       10.0f       /* Hệ số nhân float -> int (tránh dùng %f trong sprintf) */
+#define TELEMETRY_PID_SCALE         100.0f      /* Hệ số nhân Kp/Ki/Kd -> int */
 
 /* ========================================================================== */
 /* BIẾN TOÀN CỤC CHIA SẺ (SHARED GLOBAL VARIABLES)                           */
@@ -44,8 +45,10 @@ extern volatile uint32_t last_cmd_time;
  */
 void UART_Send_Telemetry(int16_t raw_t, uint32_t dist_cm, int warn,
                          int32_t enc, float spd, float trav,
+                         float wheel_left_cm, float wheel_right_cm,
                          int safety_state, int rear_state, int safety_side,
                          int boost_active, int pid_active, int encoder_ok,
-                         uint32_t rear_left_cm, uint32_t rear_right_cm);
+                         uint32_t rear_left_cm, uint32_t rear_right_cm,
+                         float pid_kp, float pid_ki, float pid_kd);
 
 #endif /* PROTOCOL_UART_H */

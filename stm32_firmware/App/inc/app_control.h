@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 /* HẰNG SỐ CẤU HÌNH ĐIỀU KHIỂN (CONTROL CONFIGURATION CONSTANTS)               */
-#define DEFAULT_SPEED_PWM           400         /* Tốc độ PWM mặc định ban đầu */
+#define DEFAULT_SPEED_PWM           500         /* Đồng bộ mức mặc định 50% với Web/ESP32 */
 #define MIN_DECEL_PWM               200         /* Tốc độ PWM tối thiểu khi giảm tốc tránh vật cản */
 
 #define SAFETY_STOP_DIST_CM         10          /* Khoảng cách dừng xe khẩn cấp (cm) */
